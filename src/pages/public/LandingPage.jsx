@@ -82,7 +82,7 @@ const LandingPage = () => {
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/">
-                <img src="/logo.png" alt="Papertrail" className="h-16 w-auto object-contain" />
+                <img src="/logo.png" alt="Papertrail" className="h-10 w-auto object-contain" />
             </Link>
           </div>
           <nav className="hidden lg:flex items-center gap-8">
