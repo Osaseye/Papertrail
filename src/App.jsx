@@ -10,6 +10,8 @@ import LoginPage from './pages/public/LoginPage';
 import RegisterPage from './pages/public/RegisterPage';
 import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
 import OnboardingPage from './pages/user/OnboardingPage';
+import ExplorePage from './pages/public/ExplorePage';
+import CreatorProfilePage from './pages/public/CreatorProfilePage';
 
 // User Pages
 import UserDashboard from './pages/user/UserDashboard';
@@ -18,7 +20,6 @@ import UserDashboard from './pages/user/UserDashboard';
 import CreatorDashboard from './pages/creator/CreatorDashboard';
 
 // Placeholders for now
-const ExplorePage = () => <div className="p-10 text-center">Explore Page (Coming Soon)</div>;
 const AboutPage = () => <div className="p-10 text-center">About Page (Coming Soon)</div>;
 const PricingPage = () => <div className="p-10 text-center">Pricing Page (Coming Soon)</div>;
 const CreatorEditor = () => <div className="p-10 text-center">Newsletter Editor (Coming Soon)</div>;
@@ -34,6 +35,7 @@ function AnimatedRoutes() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/creator/:id" element={<CreatorProfilePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />

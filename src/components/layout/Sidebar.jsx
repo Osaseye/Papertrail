@@ -41,7 +41,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       {/* Logo Section */}
       <div className={`p-6 flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''} h-20`}>
         {isCollapsed ? (
-             <img src="/icon(2).png" alt="Papertrail" className="w-10 h-10 object-contain" />
+             <img src="/icon.png" alt="Papertrail" className="w-10 h-10 object-contain" />
         ) : (
              <img src="/logo.png" alt="Papertrail" className="h-8 object-contain" />
         )}
