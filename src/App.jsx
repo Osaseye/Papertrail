@@ -15,6 +15,11 @@ import CreatorProfilePage from './pages/public/CreatorProfilePage';
 
 // User Pages
 import UserDashboard from './pages/user/UserDashboard';
+import SubscriptionManagementPage from './pages/user/SubscriptionManagementPage';
+import DeliverySettingsPage from './pages/user/DeliverySettingsPage';
+import ProfileSettingsPage from './pages/user/ProfileSettingsPage';
+import BillingSettingsPage from './pages/user/BillingSettingsPage';
+import SecuritySettingsPage from './pages/user/SecuritySettingsPage';
 
 // Creator Pages
 import CreatorDashboard from './pages/creator/CreatorDashboard';
@@ -44,6 +49,12 @@ function AnimatedRoutes() {
         {/* Protected User Routes */}
         <Route element={<ProtectedRoute allowedRoles={['user']} />}>
           <Route path="/user/dashboard" element={<UserDashboard />} />
+          <Route path="/user/subscriptions" element={<SubscriptionManagementPage />} />
+          <Route path="/user/settings" element={<Navigate to="/user/settings/profile" replace />} />
+          <Route path="/user/settings/profile" element={<ProfileSettingsPage />} />
+          <Route path="/user/settings/delivery" element={<DeliverySettingsPage />} />
+          <Route path="/user/settings/billing" element={<BillingSettingsPage />} />
+          <Route path="/user/settings/security" element={<SecuritySettingsPage />} />
         </Route>
 
         {/* Protected Creator Routes */}

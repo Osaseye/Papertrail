@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FileText, 
   LayoutDashboard, 
   Compass, 
   Settings, 
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  Mail,
+  User,
+  Clock,
+  CreditCard,
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -16,19 +20,46 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // State to track if the settings menu is expanded
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
+
+  // Auto-expand settings if we are on a settings page
+  useEffect(() => {
+    if (location.pathname.startsWith('/user/settings')) {
+      setIsSettingsExpanded(true);
+    }
+  }, [location.pathname]);
+
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/user/dashboard" },
     { icon: Compass, label: "Explore", path: "/explore" },
-    { icon: Settings, label: "Settings", path: "/user/settings" },
-    { icon: HelpCircle, label: "Support", path: "/support" },
+    { icon: Mail, label: "Subscriptions", path: "/user/subscriptions" },
   ];
+
+  const settingsSubItems = [
+    { icon: User, label: "Profile", path: "/user/settings/profile" },
+    { icon: Clock, label: "Delivery", path: "/user/settings/delivery" },
+    { icon: CreditCard, label: "Billing", path: "/user/settings/billing" },
+    { icon: Shield, label: "Security", path: "/user/settings/security" },
+  ];
+
+  const handleSettingsClick = () => {
+    if (isCollapsed) {
+        toggleSidebar();
+        setIsSettingsExpanded(true);
+    } else {
+        setIsSettingsExpanded(!isSettingsExpanded);
+    }
+  };
+
+  const isSettingsActive = location.pathname.startsWith('/user/settings');
 
   return (
     <motion.aside 
       initial={false}
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="h-screen bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col relative z-20 shrink-0"
+      className="h-screen bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col relative z-20 shrink-0 select-none"
     >
       {/* Toggle Button */}
       <button 
@@ -48,7 +79,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 flex flex-col gap-2 overflow-hidden mt-6">
+      <nav className="flex-1 px-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar mt-6">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -76,6 +107,73 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             </button>
           );
         })}
+
+        {/* Settings Item with Submenu */}
+        <div className="flex flex-col gap-1">
+            <button
+                onClick={handleSettingsClick}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full group justify-between ${
+                    isSettingsActive 
+                    ? 'text-primary'
+                    : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400'
+                }`}
+                title={isCollapsed ? "Settings" : ''}
+            >
+                <div className="flex items-center gap-3">
+                    <Settings size={20} className={`shrink-0 ${isSettingsActive ? '' : ''}`} />
+                    {!isCollapsed && (
+                        <span className="text-sm font-semibold whitespace-nowrap">Settings</span>
+                    )}
+                </div>
+                {!isCollapsed && (
+                     <ChevronDown 
+                        size={16} 
+                        className={`transition-transform duration-200 ${isSettingsExpanded ? 'rotate-180' : ''}`}
+                     />
+                )}
+            </button>
+
+            {/* Sub Items */}
+            <AnimatePresence>
+                {isSettingsExpanded && !isCollapsed && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden flex flex-col gap-1 ml-4 border-l border-slate-200 dark:border-slate-800 pl-2"
+                    >
+                        {settingsSubItems.map((subItem) => {
+                             const isSubActive = location.pathname === subItem.path;
+                             return (
+                                <button
+                                    key={subItem.label}
+                                    onClick={() => navigate(subItem.path)}
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full group ${
+                                        isSubActive 
+                                        ? 'bg-primary/10 text-primary' 
+                                        : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400'
+                                    }`}
+                                >
+                                    <subItem.icon size={16} className="shrink-0" />
+                                    <span className="text-xs font-medium whitespace-nowrap">{subItem.label}</span>
+                                </button>
+                             );
+                        })}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+
+         <button
+            onClick={() => navigate('/support')}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full group text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400`}
+        >
+              <HelpCircle size={20} className="shrink-0" />
+              {!isCollapsed && (
+                <span className="text-sm font-semibold whitespace-nowrap">Support</span>
+              )}
+        </button>
+
       </nav>
 
       {/* Profile Section */}
