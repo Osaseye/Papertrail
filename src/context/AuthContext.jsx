@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import LoadingScreen from '../components/ui/LoadingScreen';
 
 const AuthContext = createContext(null);
 
@@ -12,7 +13,8 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    setLoading(false);
+    // Simulate initial load for effect
+    setTimeout(() => setLoading(false), 1000);
   }, []);
 
   const loginAsUser = () => {
@@ -45,7 +47,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, loginAsUser, loginAsCreator, logout, loading }}>
-      {!loading && children}
+      {loading ? <LoadingScreen /> : children}
     </AuthContext.Provider>
   );
 };

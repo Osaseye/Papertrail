@@ -2,15 +2,36 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
   const [role, setRole] = useState('User');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+
   const { loginAsUser, loginAsCreator } = useAuth();
   const navigate = useNavigate();
 
   const handleRegister = (e) => {
     e.preventDefault();
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+        setError('Please fill in all fields');
+        return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return;
+    }
+    setError('');
     setLoading(true);
 
     // Simulate loading delay
@@ -79,7 +100,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col items-center p-6 bg-background-light dark:bg-background-dark overflow-y-auto custom-scrollbar">
         <div className="w-full max-w-[340px] flex flex-col my-auto">
           {/* Mobile Logo (Visible only on small screens) */}
-          <div className="lg:hidden flex items-center gap-3 mb-6 text-primary">
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-6 text-primary">
             <div className="h-10 w-auto">
               <img src="/logo.png" alt="Papertrail" className="h-full w-auto object-contain" />
             </div>
@@ -96,12 +117,14 @@ export default function RegisterPage() {
             <div className="flex h-10 w-full bg-[#e7edf3] dark:bg-slate-800 rounded-lg p-1 relative isolate">
                 <div className="grid grid-cols-2 w-full h-full relative z-20">
                      <button
+                        type="button"
                         onClick={() => setRole('User')}
                         className={`text-xs font-semibold transition-colors duration-200 ${role === 'User' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
                         Read Content
                      </button>
                      <button
+                        type="button"
                         onClick={() => setRole('Content Creator')}
                         className={`text-xs font-semibold transition-colors duration-200 ${role === 'Content Creator' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
@@ -131,12 +154,19 @@ export default function RegisterPage() {
                 className="space-y-3" 
                 onSubmit={handleRegister}
             >
+            {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 text-xs font-medium rounded-lg">
+                    {error}
+                </div>
+            )}
             <div className="flex flex-col">
               <label className="text-[#0d141b] dark:text-slate-50 text-xs font-medium leading-normal pb-1.5">Full Name</label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">person</span>
                 <input 
                     type="text" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     placeholder="John Doe" 
                     className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
@@ -148,6 +178,8 @@ export default function RegisterPage() {
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">mail</span>
                 <input 
                     type="email" 
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="name@example.com" 
                     className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
@@ -158,10 +190,19 @@ export default function RegisterPage() {
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">lock</span>
                 <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="••••••••" 
-                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
+                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 pr-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4c739a] hover:text-primary transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div className="flex flex-col">
@@ -169,10 +210,19 @@ export default function RegisterPage() {
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">lock_reset</span>
                 <input 
-                    type="password" 
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                     placeholder="••••••••" 
-                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
+                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 pr-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
+                <button 
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4c739a] hover:text-primary transition-colors focus:outline-none"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <button 

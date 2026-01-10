@@ -4,6 +4,7 @@ import { ToastProvider } from './context/ToastContext';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import PageTransition from './components/ui/PageTransition';
 
 // Public Pages
 import LandingPage from './pages/public/LandingPage';
@@ -46,41 +47,41 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         {/* Public Routes - No Layout */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/explore" element={<ExplorePage />} />
-        <Route path="/creator/:id" element={<CreatorProfilePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/creator-onboarding" element={<CreatorOnboardingPage />} />
+        <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
+        <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+        <Route path="/pricing" element={<PageTransition><PricingPage /></PageTransition>} />
+        <Route path="/explore" element={<PageTransition><ExplorePage /></PageTransition>} />
+        <Route path="/creator/:id" element={<PageTransition><CreatorProfilePage /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+        <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
+        <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
+        <Route path="/creator-onboarding" element={<PageTransition><CreatorOnboardingPage /></PageTransition>} />
 
         {/* Protected User Routes */}
         <Route element={<ProtectedRoute allowedRoles={['user']} />}>
-          <Route path="/user/dashboard" element={<UserDashboard />} />
-          <Route path="/user/subscriptions" element={<SubscriptionManagementPage />} />
+          <Route path="/user/dashboard" element={<PageTransition><UserDashboard /></PageTransition>} />
+          <Route path="/user/subscriptions" element={<PageTransition><SubscriptionManagementPage /></PageTransition>} />
           <Route path="/user/settings" element={<Navigate to="/user/settings/profile" replace />} />
-          <Route path="/user/settings/profile" element={<ProfileSettingsPage />} />
-          <Route path="/user/settings/delivery" element={<DeliverySettingsPage />} />
-          <Route path="/user/settings/billing" element={<BillingSettingsPage />} />
-          <Route path="/user/settings/security" element={<SecuritySettingsPage />} />
-          <Route path="/user/support" element={<SupportPage />} />
+          <Route path="/user/settings/profile" element={<PageTransition><ProfileSettingsPage /></PageTransition>} />
+          <Route path="/user/settings/delivery" element={<PageTransition><DeliverySettingsPage /></PageTransition>} />
+          <Route path="/user/settings/billing" element={<PageTransition><BillingSettingsPage /></PageTransition>} />
+          <Route path="/user/settings/security" element={<PageTransition><SecuritySettingsPage /></PageTransition>} />
+          <Route path="/user/support" element={<PageTransition><SupportPage /></PageTransition>} />
         </Route>
 
         {/* Protected Creator Routes */}
         <Route element={<ProtectedRoute allowedRoles={['creator']} />}>
-          <Route path="/creator/dashboard" element={<CreatorDashboard />} />
-          <Route path="/creator/editor" element={<CreatorEditor />} />
-          <Route path="/creator/newsletters" element={<CreatorNewsletters />} />
-          <Route path="/creator/subscribers" element={<CreatorSubscribers />} />
-          <Route path="/creator/settings" element={<CreatorSettings />} />
-          <Route path="/creator/support" element={<CreatorSupportPage />} />
+          <Route path="/creator/dashboard" element={<PageTransition><CreatorDashboard /></PageTransition>} />
+          <Route path="/creator/editor" element={<PageTransition><CreatorEditor /></PageTransition>} />
+          <Route path="/creator/newsletters" element={<PageTransition><CreatorNewsletters /></PageTransition>} />
+          <Route path="/creator/subscribers" element={<PageTransition><CreatorSubscribers /></PageTransition>} />
+          <Route path="/creator/settings" element={<PageTransition><CreatorSettings /></PageTransition>} />
+          <Route path="/creator/support" element={<PageTransition><CreatorSupportPage /></PageTransition>} />
         </Route>
         
          {/* Catch all - 404 */}
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );

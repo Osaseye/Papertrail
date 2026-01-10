@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
-import { 
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
+import {  
   Search, 
   Filter, 
   Download, 
@@ -33,20 +34,20 @@ const CreatorSubscribers = () => {
       
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-6 z-10 w-full">
+        <header className="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-4 md:px-6 z-10 w-full">
             <h1 className="text-xl font-bold text-slate-800 dark:text-white">Subscribers</h1>
             <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
-                    <Download size={16} /> Export CSV
+                <button className="flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
+                    <Download size={16} /> <span className="hidden md:inline">Export CSV</span>
                 </button>
-                <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2">
-                    <User size={16} /> Add Subscriber
+                <button className="bg-primary text-white px-3 md:px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2">
+                    <User size={16} /> <span className="hidden md:inline">Add Subscriber</span>
                 </button>
             </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar pb-32 md:pb-6">
             
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -105,9 +106,9 @@ const CreatorSubscribers = () => {
             </div>
 
             {/* Subscribers Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wider text-slate-500 font-semibold">
                                 <th className="px-6 py-4">Subscriber</th>
@@ -166,6 +167,39 @@ const CreatorSubscribers = () => {
                         </tbody>
                     </table>
                 </div>
+                
+                {/* Mobile Card View (Visible only on small screens) */}
+                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    {MOCK_SUBSCRIBERS.map((sub) => (
+                        <div key={sub.id} className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                                    {sub.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-slate-900 dark:text-white text-sm">{sub.name}</p>
+                                    <p className="text-slate-500 text-xs">{sub.email}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                                            sub.status === 'Active' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400' :
+                                            sub.status === 'Unsubscribed' ? 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-400' :
+                                            'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400'
+                                        }`}>
+                                            {sub.status}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                            <Calendar size={10} /> {sub.joined}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button className="text-slate-400 p-2">
+                                <MoreVertical size={18} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
                 {/* Pagination (Mock) */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-sm text-slate-500">
                     <span>Showing 1-5 of 2,451</span>
@@ -177,6 +211,7 @@ const CreatorSubscribers = () => {
             </div>
 
         </main>
+        <CreatorMobileBottomNav />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import CreatorProfile from './settings/CreatorProfile';
 import CreatorSubscription from './settings/CreatorSubscription';
 import CreatorSecurity from './settings/CreatorSecurity';
@@ -40,7 +41,7 @@ const CreatorSettings = () => {
                 </header>
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 custom-scrollbar">
+                <main className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 custom-scrollbar pb-32 md:pb-8">
                     <div className="max-w-4xl mx-auto">
                         {/* Only the content panel remains */}
                          <div className="flex-1 min-w-0">
@@ -48,6 +49,7 @@ const CreatorSettings = () => {
                         </div>
                     </div>
                 </main>
+                <CreatorMobileBottomNav />
             </div>
         </div>
     );

@@ -2,15 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [role, setRole] = useState('User');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  
   const { loginAsUser, loginAsCreator } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    setError('');
     setLoading(true);
 
     // Simulate loading delay
@@ -78,7 +89,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col justify-center items-center p-6 bg-background-light dark:bg-background-dark overflow-y-auto">
         <div className="w-full max-w-[340px] flex flex-col">
           {/* Mobile Logo (Visible only on small screens) */}
-          <div className="lg:hidden flex items-center gap-3 mb-6 text-primary">
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-6 text-primary">
             <div className="h-10 w-auto">
               <img src="/logo.png" alt="Papertrail" className="h-full w-auto object-contain" />
             </div>
@@ -95,12 +106,14 @@ export default function LoginPage() {
             <div className="flex h-10 w-full bg-[#e7edf3] dark:bg-slate-800 rounded-lg p-1 relative isolate">
                 <div className="grid grid-cols-2 w-full h-full relative z-20">
                      <button
+                        type="button"
                         onClick={() => setRole('User')}
                         className={`text-xs font-semibold transition-colors duration-200 ${role === 'User' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
                         User
                      </button>
                      <button
+                        type="button"
                         onClick={() => setRole('Content Creator')}
                         className={`text-xs font-semibold transition-colors duration-200 ${role === 'Content Creator' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
@@ -130,12 +143,19 @@ export default function LoginPage() {
                 className="space-y-3" 
                 onSubmit={handleLogin}
             >
+            {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 text-xs font-medium rounded-lg">
+                    {error}
+                </div>
+            )}
             <div className="flex flex-col">
               <label className="text-[#0d141b] dark:text-slate-50 text-xs font-medium leading-normal pb-1.5">Email Address</label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">mail</span>
                 <input 
                     type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com" 
                     className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
@@ -149,10 +169,19 @@ export default function LoginPage() {
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">lock</span>
                 <input 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••" 
-                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
+                    className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-slate-50 focus:outline-0 focus:ring-2 focus:ring-primary border border-[#cfdbe7] dark:border-slate-700 bg-white dark:bg-slate-900 h-10 pl-10 pr-10 placeholder:text-[#4c739a] text-sm font-normal shadow-none outline-none transition-all"
                 />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4c739a] hover:text-primary transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <button 

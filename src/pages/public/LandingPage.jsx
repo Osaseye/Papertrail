@@ -77,7 +77,7 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-[#0d121b] dark:text-slate-100 font-display transition-colors duration-300">
+    <div className="bg-background-light dark:bg-background-dark text-[#0d121b] dark:text-slate-100 font-display transition-colors duration-300 overflow-x-hidden w-full">
       <header className="sticky top-0 z-50 w-full border-b border-solid border-[#e7ebf3] dark:border-slate-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-10 lg:px-20 py-4">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -92,11 +92,12 @@ const LandingPage = () => {
             <NavLink href="#pricing" isActive={activeSection === 'pricing'}>Pricing</NavLink>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-[#e7ebf3] dark:bg-slate-800 text-[#0d121b] dark:text-white text-sm font-bold tracking-tight hover:bg-[#d1d9e7] dark:hover:bg-slate-700 transition-colors">
+            <Link to="/login" className="hidden sm:flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-[#e7ebf3] dark:bg-slate-800 text-[#0d121b] dark:text-white text-sm font-bold tracking-tight hover:bg-[#d1d9e7] dark:hover:bg-slate-700 transition-colors">
                 Log In
             </Link>
-            <Link to="/register" className="min-w-[120px] flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold tracking-tight hover:opacity-90 transition-opacity">
-                Get Started
+            <Link to="/register" className="min-w-[100px] sm:min-w-[120px] flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold tracking-tight hover:opacity-90 transition-opacity">
+                <span className="sm:hidden">Join Now</span>
+                <span className="hidden sm:inline">Get Started</span>
             </Link>
           </div>
         </div>

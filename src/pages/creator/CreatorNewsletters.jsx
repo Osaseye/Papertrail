@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
-import { 
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
+import {  
   Plus, 
   Search, 
   FileText, 
@@ -78,7 +79,7 @@ const CreatorNewsletters = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 custom-scrollbar pb-32 md:pb-6">
 
             {/* Tabs */}
             <div className="flex items-center gap-6 mb-6 border-b border-slate-200 dark:border-slate-800">
@@ -174,6 +175,7 @@ const CreatorNewsletters = () => {
             </div>
 
         </main>
+        <CreatorMobileBottomNav />
       </div>
     </div>
   );

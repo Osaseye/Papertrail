@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import { Mail, MessageCircle, FileQuestion } from 'lucide-react';
 
 const CreatorSupportPage = () => {
@@ -15,7 +16,7 @@ const CreatorSupportPage = () => {
                     <h1 className="text-xl font-bold text-slate-900 dark:text-white">Help & Support</h1>
                 </header>
 
-                <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <main className="flex-1 overflow-y-auto p-6 custom-scrollbar pb-32 md:pb-6">
                     <div className="max-w-4xl mx-auto space-y-8">
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -75,6 +76,7 @@ const CreatorSupportPage = () => {
                         </div>
                     </div>
                 </main>
+                <CreatorMobileBottomNav />
             </div>
         </div>
     );

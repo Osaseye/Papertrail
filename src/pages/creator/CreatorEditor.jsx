@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import Modal from '../../components/ui/Modal';
 import { motion } from 'framer-motion';
 import { 
@@ -30,6 +31,7 @@ const CreatorEditor = () => {
   const [isDataSaved, setIsDataSaved] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false); // Mobile AI Sidebar Toggle
 
   // Chat State
   const [messages, setMessages] = useState([
@@ -86,35 +88,46 @@ const CreatorEditor = () => {
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-6 z-40">
+        <header className="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-4 lg:px-6 z-40">
             <div className="flex items-center gap-4">
                 <div className="flex flex-col">
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Draft</span>
-                    <span className="text-sm font-semibold truncate max-w-[200px] text-slate-900 dark:text-white">Weekly Creator Insights #42</span>
+                    <span className="text-sm font-semibold truncate max-w-[120px] md:max-w-[200px] text-slate-900 dark:text-white">Weekly Creator Insights #42</span>
                 </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
                 <button 
                     onClick={() => setIsPreviewOpen(true)}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                    className="p-2 md:px-4 md:py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                    title="Preview"
                 >
                     <Eye size={18} />
-                    Preview
+                    <span className="hidden md:inline">Preview</span>
                 </button>
                 <button 
                     onClick={() => setIsSaveModalOpen(true)}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                    className="p-2 md:px-4 md:py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                    title="Save"
                 >
                     <Save size={18} />
-                    {isDataSaved ? "Saved!" : "Save draft"}
+                    <span className="hidden md:inline">{isDataSaved ? "Saved!" : "Save"}</span>
                 </button>
                 <button 
                     onClick={() => setIsScheduleOpen(true)}
-                    className="bg-primary text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2"
+                    className="bg-primary text-white p-2 md:px-5 md:py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2"
+                    title="Schedule"
                 >
                     <Send size={18} />
-                    Schedule send
+                    <span className="hidden md:inline">Send</span>
+                </button>
+                
+                {/* AI Toggle for Mobile */}
+                <button 
+                    onClick={() => setIsAiSidebarOpen(!isAiSidebarOpen)}
+                    className="lg:hidden p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                    <Sparkles size={18} className={isAiSidebarOpen ? "text-primary" : ""} />
                 </button>
             </div>
         </header>
@@ -126,8 +139,8 @@ const CreatorEditor = () => {
             <section className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden relative">
                 
                 {/* Formatting Toolbar */}
-                <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center gap-1 px-4 shrink-0">
-                    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <div className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center lg:justify-center gap-1 px-4 shrink-0 overflow-x-auto custom-scrollbar">
+                    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg min-w-max">
                         <button className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-all shadow-sm transform active:scale-95"><Bold size={18} /></button>
                         <button className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-all shadow-sm transform active:scale-95"><Italic size={18} /></button>
                         <button className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-all shadow-sm transform active:scale-95"><List size={18} /></button>
@@ -141,18 +154,18 @@ const CreatorEditor = () => {
                 </div>
 
                 {/* Text Area */}
-                <div className="flex-1 overflow-y-auto p-8 flex justify-center custom-scrollbar">
-                    <div className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm min-h-[800px] p-12 mb-10 transition-colors">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center custom-scrollbar pb-32 md:pb-8">
+                    <div className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm min-h-[500px] md:min-h-[800px] p-6 md:p-12 mb-10 transition-colors">
                         <input 
-                            className="w-full text-4xl font-bold bg-transparent border-none focus:ring-0 p-0 mb-8 placeholder-slate-300 dark:placeholder-slate-700 text-slate-900 dark:text-white" 
+                            className="w-full text-2xl md:text-4xl font-bold bg-transparent border-none focus:ring-0 p-0 mb-6 md:mb-8 placeholder-slate-300 dark:placeholder-slate-700 text-slate-900 dark:text-white" 
                             placeholder="Enter newsletter title..." 
                             type="text"
                         />
-                        <div className="prose dark:prose-invert prose-slate max-w-none">
+                        <div className="prose dark:prose-invert prose-slate max-w-none prose-sm md:prose-base">
                             <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed mb-6 italic border-l-4 border-slate-200 dark:border-slate-700 pl-4">
                                 Start writing your masterpiece here... Use the AI assistant on the right to help you draft faster or refine your voice.
                             </p>
-                            <div className="editor-content min-h-[400px] cursor-text outline-none focus:outline-none" contentEditable="true">
+                            <div className="editor-content min-h-[400px] cursor-text outline-none focus:outline-none" contentEditable="true" suppressContentEditableWarning={true}>
                                 <h2 className="text-2xl font-semibold mb-4 text-slate-800 dark:text-slate-100">What's happening this week</h2>
                                 <p className="mb-4 text-slate-600 dark:text-slate-300">This week we're diving deep into the latest trends in creator monetization. We've noticed a significant shift towards micro-subscriptions and niche communities.</p>
                                 <p className="text-slate-600 dark:text-slate-300">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
@@ -163,12 +176,26 @@ const CreatorEditor = () => {
             </section>
 
             {/* AI Assistant Sidebar with Chat Interface */}
-            <aside className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                    <div className="bg-blue-100 dark:bg-blue-900/40 p-1.5 rounded-lg">
-                        <Sparkles size={20} className="text-primary" />
+            {/* Desktop: Always visible. Mobile: Slide over or toggle */}
+            <aside className={`
+                w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col
+                fixed inset-y-0 right-0 z-[60] transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+                ${isAiSidebarOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:shadow-none'}
+            `}>
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between lg:justify-start gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 dark:bg-blue-900/40 p-1.5 rounded-lg">
+                            <Sparkles size={20} className="text-primary" />
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100">AI Assistant</h3>
                     </div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100">AI Assistant</h3>
+                     {/* Close button for mobile */}
+                    <button 
+                        onClick={() => setIsAiSidebarOpen(false)}
+                        className="lg:hidden p-1 text-slate-500 hover:bg-slate-100 rounded-lg"
+                    >
+                        <ChevronRight size={20} />
+                    </button>
                 </div>
                 
                 <div className="flex-1 flex flex-col overflow-hidden">
@@ -237,7 +264,13 @@ const CreatorEditor = () => {
             </aside>
         </div>
       </div>
-          
+                {/* Overlay for mobile AI sidebar */}
+      {isAiSidebarOpen && (
+        <div 
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setIsAiSidebarOpen(false)}
+        />
+      )}
       {/* Draggable Help Button */}
       <motion.button 
         drag
@@ -290,6 +323,7 @@ const CreatorEditor = () => {
              </div>
         </Modal>
 
+      <CreatorMobileBottomNav />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
+import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import Modal from '../../components/ui/Modal';
 import { 
   BarChart, 
@@ -119,25 +120,27 @@ const CreatorDashboard = () => {
                 {/* Detailed Chart (Placeholder using existing components logic) */}
                 <div>
                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Engagement Over Time (24h)</h3>
-                     <div className="h-64 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 text-sm">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={[
-                                    { time: '1h', opens: 400 }, { time: '2h', opens: 300 }, { time: '4h', opens: 550 },
-                                    { time: '8h', opens: 200 }, { time: '12h', opens: 150 }, { time: '24h', opens: 80 }
-                                ]}
-                                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-700/50" />
-                                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: 'white' }}
-                                    cursor={{ fill: 'transparent' }} 
-                                />
-                                <Bar dataKey="opens" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                     <div className="h-64 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 text-sm overflow-hidden">
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={[
+                                        { time: '1h', opens: 400 }, { time: '2h', opens: 300 }, { time: '4h', opens: 550 },
+                                        { time: '8h', opens: 200 }, { time: '12h', opens: 150 }, { time: '24h', opens: 80 }
+                                    ]}
+                                    margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-700/50" />
+                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: 'white' }}
+                                        cursor={{ fill: 'transparent' }} 
+                                    />
+                                    <Bar dataKey="opens" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                      </div>
                 </div>
 
@@ -182,7 +185,7 @@ const CreatorDashboard = () => {
          </div>
       </Modal>
 
-      <main className="flex-1 overflow-y-auto h-screen custom-scrollbar transition-all duration-300">
+      <main className="flex-1 overflow-y-auto h-screen custom-scrollbar transition-all duration-300 pb-32 md:pb-6">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             
             {/* Header Section */}
@@ -452,6 +455,7 @@ const CreatorDashboard = () => {
             </div>
 
         </div>
+        <CreatorMobileBottomNav />
       </main>
     </div>
   );
