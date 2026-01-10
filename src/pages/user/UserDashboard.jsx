@@ -203,7 +203,7 @@ const UserDashboard = () => {
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-24 md:pb-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-32 md:pb-8">
             <AnimatePresence mode="wait">
                 
                 {/* DASHBOARD VIEW */}

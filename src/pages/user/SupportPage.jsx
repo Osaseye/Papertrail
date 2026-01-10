@@ -17,7 +17,7 @@ const SupportPage = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         // Simulate API call
-        console.log('Support ticket submitted:', formData);
+        // console.log('Support ticket submitted:', formData);
         setIsSubmitted(true);
         setTimeout(() => setIsSubmitted(false), 3000);
         setFormData({ subject: '', category: 'general', message: '', priority: 'normal' });
@@ -32,7 +32,7 @@ const SupportPage = () => {
             <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
             
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-32 md:pb-8 custom-scrollbar">
                     <div className="max-w-3xl mx-auto space-y-8">
                         
                         {/* Header */}

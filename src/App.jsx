@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PageTransition from './components/ui/PageTransition';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Public Pages
 import LandingPage from './pages/public/LandingPage';
@@ -89,13 +90,15 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <ToastProvider>
-          <AnimatedRoutes />
-        </ToastProvider>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <ToastProvider>
+            <AnimatedRoutes />
+          </ToastProvider>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

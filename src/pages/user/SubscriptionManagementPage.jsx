@@ -181,7 +181,7 @@ const SubscriptionManagementPage = () => {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-32 md:pb-8 custom-scrollbar">
             <div className="max-w-7xl mx-auto w-full">
                 {/* Page Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
