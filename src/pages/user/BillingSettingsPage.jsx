@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
+import { useToast } from '../../context/ToastContext';
 import { Check, Star, Zap, Shield, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 const BillingSettingsPage = () => {
+    const { addToast } = useToast();
     
     // FAQ Data
     const faqs = [
@@ -34,8 +37,8 @@ const BillingSettingsPage = () => {
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
             <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 custom-scrollbar">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
                     <div className="max-w-6xl mx-auto space-y-12">
                 
                 {/* Header */}
@@ -112,7 +115,10 @@ const BillingSettingsPage = () => {
                                 <div className="p-0.5 bg-green-500 rounded-full text-white"><Check size={12} strokeWidth={4} /></div> Ad-free Experience
                             </li>
                         </ul>
-                        <button className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-blue-500/30">
+                        <button 
+                            onClick={() => addToast("Successfully upgraded to Pro Plan! Welcome to the club.", "success")}
+                            className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-blue-500/30"
+                        >
                             Upgrade to Pro
                         </button>
                     </div>
@@ -181,6 +187,7 @@ const BillingSettingsPage = () => {
 
             </div>
                 </div>
+                <MobileBottomNav />
             </div>
         </div>
     );

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
+import { useToast } from '../../context/ToastContext';
 import { Camera, User, Mail, Phone, MapPin, Globe } from 'lucide-react';
 
 const ProfileSettingsPage = () => {
+    const { addToast } = useToast();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [formData, setFormData] = useState({
         firstName: 'Alex',
@@ -20,8 +23,8 @@ const ProfileSettingsPage = () => {
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
             <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 custom-scrollbar">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
                     <div className="max-w-4xl mx-auto space-y-8">
                 
                 {/* Header */}
@@ -136,18 +139,40 @@ const ProfileSettingsPage = () => {
                         </div>
                     </section>
 
+                    <hr className="border-slate-200 dark:border-slate-800" />
+
+                    {/* App Permissions & Theme */}
+                    <section className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Dark Mode</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Toggle the application theme between light and dark mode.</p>
+                            </div>
+                            <button 
+                                onClick={() => document.documentElement.classList.toggle('dark')}
+                                className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:ring-offset-slate-900"
+                            >
+                                <span className="translate-x-1 dark:translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition-transform" />
+                            </button>
+                        </div>
+                    </section>
+
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                         <button className="px-6 py-2.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                             Cancel
                         </button>
-                        <button className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-all">
+                        <button 
+                            onClick={() => addToast("Profile updated successfully!", "success")}
+                            className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-all"
+                        >
                             Save Changes
                         </button>
                     </div>
     </div>
         
                 </div>
+                <MobileBottomNav />
             </div>
         </div>
     </div>

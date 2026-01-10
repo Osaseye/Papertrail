@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
+import NotificationDropdown from '../../components/ui/NotificationDropdown';
 import { 
   Search, 
   Bell, 
@@ -15,9 +17,18 @@ import {
   Share2,
   Bookmark,
   X,
-  Check
+  Check,
+  FileText, // Added
+  CheckCircle, // Added
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Mock Data for Notifications
+const DUMMY_NOTIFICATIONS = [
+  { id: 1, title: "New Issue", message: "TechCrunch saved a new issue.", time: "2m ago", read: false, icon: <FileText size={14} /> },
+  { id: 2, title: "Subscription Active", message: "Your plan was renewed.", time: "1h ago", read: false, icon: <CheckCircle size={14} /> },
+  { id: 3, title: "Welcome!", message: "Thanks for joining Papertrail.", time: "1d ago", read: true, icon: <Mail size={14} /> },
+];
 
 // Mock Data for Feed Items
 const FEED_ITEMS = [
@@ -70,6 +81,11 @@ const FEED_ITEMS = [
 const UserDashboard = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'reading'
+  
+  // Notification State
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
+
   const [readingItem, setReadingItem] = useState(null);
   
   // Interaction States
@@ -77,6 +93,17 @@ const UserDashboard = () => {
   const [filterSource, setFilterSource] = useState(null);
   const [manageMode, setManageMode] = useState(false);
   const [showActivityMenu, setShowActivityMenu] = useState(false);
+
+  // Notification Handlers
+  const handleMarkRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const unreadNotifs = notifications.filter(n => !n.read).length;
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
@@ -155,15 +182,28 @@ const UserDashboard = () => {
               />
             </div>
             
-            <button className="relative p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-              <Bell size={18} className="text-slate-700 dark:text-slate-300" />
-              {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-100 dark:border-slate-800"></span>}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Bell size={18} className="text-slate-700 dark:text-slate-300" />
+                {unreadNotifs > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-100 dark:border-slate-800"></span>}
+              </button>
+
+              <NotificationDropdown 
+                isOpen={showNotifications} 
+                onClose={() => setShowNotifications(false)}
+                notifications={notifications}
+                markRead={handleMarkRead}
+                markAllRead={handleMarkAllRead}
+              />
+            </div>
           </div>
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-24 md:pb-6">
             <AnimatePresence mode="wait">
                 
                 {/* DASHBOARD VIEW */}
@@ -422,6 +462,7 @@ const UserDashboard = () => {
 
             </AnimatePresence>
         </div>
+      <MobileBottomNav />
       </main>
     </div>
   );

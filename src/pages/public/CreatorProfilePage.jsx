@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import { 
   CheckCircle, Users, MapPin, Share2, Video, Camera, AtSign, 
   Check, ChevronLeft, ChevronRight, ArrowRight, Play, Heart, MessageCircle, ArrowLeft, X 
 } from 'lucide-react';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
 
 const CreatorProfilePage = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [selectedPost, setSelectedPost] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   // Dummy data for posts
   const posts = [
@@ -45,8 +49,9 @@ const CreatorProfilePage = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-background-light dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-200">
-        {/* Back Button */}
-        <div className="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+        
+        {/* Back Button (Desktop) */}
+        <div className="hidden md:block sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
              <div className="max-w-5xl mx-auto">
                 <button 
                   onClick={() => navigate('/explore')} 
@@ -57,7 +62,15 @@ const CreatorProfilePage = () => {
              </div>
         </div>
 
-        <main className="flex-1 w-full pb-20">
+        {/* Back Button (Mobile - Absolute) */}
+        <button 
+            onClick={() => navigate('/explore')} 
+            className="md:hidden absolute top-4 left-4 z-50 p-2 bg-black/30 backdrop-blur-md rounded-full text-white"
+        >
+             <ArrowLeft size={20} />
+        </button>
+
+        <main className="flex-1 w-full pb-24 md:pb-20">
             {/* Cover Image */}
             <div 
                 className="relative w-full h-[250px] bg-cover bg-center" 
@@ -87,7 +100,23 @@ const CreatorProfilePage = () => {
                         </div>
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
-                        <button className="flex-1 md:flex-none px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">Subscribe Now</button>
+                        <button 
+                            onClick={() => {
+                                setIsSubscribed(!isSubscribed);
+                                if (!isSubscribed) {
+                                    addToast("Successfully subscribed to Maya Zen!", "success");
+                                } else {
+                                    addToast("Unsubscribed from Maya Zen.", "info");
+                                }
+                            }}
+                            className={`flex-1 md:flex-none px-8 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                                isSubscribed 
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700' 
+                                : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                            }`}
+                        >
+                            {isSubscribed ? 'Subscribed' : 'Subscribe Now'}
+                        </button>
                         <button className="px-3 py-3 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                             <Share2 className="text-slate-500" size={20} />
                         </button>
@@ -279,6 +308,7 @@ const CreatorProfilePage = () => {
                 </div>
             </div>
         )}
+        <MobileBottomNav />
     </div>
   );
 };

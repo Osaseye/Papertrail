@@ -22,7 +22,7 @@ export default function RegisterPage() {
         navigate('/onboarding');
       } else {
         loginAsCreator();
-        navigate('/creator/dashboard');
+        navigate('/creator-onboarding');
       }
     }, 1500); 
   };

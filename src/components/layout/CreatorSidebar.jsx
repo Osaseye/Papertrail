@@ -2,48 +2,53 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
-  Compass, 
+  FileText, 
+  Users, 
   Settings, 
   HelpCircle,
   ChevronLeft,
   ChevronRight,
-  Mail,
+  LogOut,
+  ChevronDown,
   User,
-  Clock,
   CreditCard,
   Shield,
-  ChevronDown
+  Edit3
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; 
 
-const Sidebar = ({ isCollapsed, toggleSidebar }) => {
+const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  // Safe destructure in case useAuth is not fully ready or context is missing temporarily
+  const auth = useAuth();
+  const logout = auth?.logout || (() => console.log("Logout clicked"));
+  const user = auth?.user || { name: "Creator", email: "creator@papertrail.com" };
 
   // State to track if the settings menu is expanded
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
 
   // Auto-expand settings if we are on a settings page
   useEffect(() => {
-    if (location.pathname.startsWith('/user/settings')) {
+    if (location.pathname.startsWith('/creator/settings')) {
       setIsSettingsExpanded(true);
     }
   }, [location.pathname]);
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/user/dashboard" },
-    { icon: Compass, label: "Explore", path: "/explore" },
-    { icon: Mail, label: "Subscriptions", path: "/user/subscriptions" },
+    { icon: LayoutDashboard, label: "Dashboard", path: "/creator/dashboard" },
+    { icon: FileText, label: "Newsletters", path: "/creator/newsletters" },
+    { icon: Edit3, label: "Editor", path: "/creator/editor" },
+    { icon: Users, label: "Subscribers", path: "/creator/subscribers" },
   ];
 
+  const getSubItemPath = (tab) => `/creator/settings?tab=${tab}`;
+  
   const settingsSubItems = [
-    { icon: User, label: "Profile", path: "/user/settings/profile" },
-    { icon: Clock, label: "Delivery", path: "/user/settings/delivery" },
-    { icon: CreditCard, label: "Billing", path: "/user/settings/billing" },
-    { icon: Shield, label: "Security", path: "/user/settings/security" },
+    { icon: User, label: "Profile", tab: "profile" },
+    { icon: CreditCard, label: "Subscription", tab: "subscription" },
+    { icon: Shield, label: "Security", tab: "security" },
   ];
 
   const handleSettingsClick = () => {
@@ -55,14 +60,15 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     }
   };
 
-  const isSettingsActive = location.pathname.startsWith('/user/settings');
+  const isSettingsActive = location.pathname.startsWith('/creator/settings');
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'profile';
 
   return (
     <motion.aside 
       initial={false}
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="hidden md:flex h-screen bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex-col relative z-20 shrink-0 select-none"
+      className="hidden md:flex h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col relative z-50 shrink-0 select-none sticky top-0"
     >
       {/* Toggle Button */}
       <button 
@@ -75,9 +81,13 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       {/* Logo Section */}
       <div className={`p-6 flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''} h-20`}>
         {isCollapsed ? (
-             <img src="/icon.png" alt="Papertrail" className="w-10 h-10 object-contain" />
+             <img src="/icon.png" alt="P" className="w-10 h-10 object-contain" />
         ) : (
-             <img src="/logo.png" alt="Papertrail" className="h-8 object-contain" />
+             <img 
+               src="/logo.png" 
+               alt="Papertrail" 
+               className="h-8 object-contain dark:[filter:brightness(0)_saturate(100%)_invert(31%)_sepia(85%)_saturate(3033%)_hue-rotate(212deg)_brightness(96%)_contrast(92%)]" 
+             />
         )}
       </div>
 
@@ -146,11 +156,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                         className="overflow-hidden flex flex-col gap-1 ml-4 border-l border-slate-200 dark:border-slate-800 pl-2"
                     >
                         {settingsSubItems.map((subItem) => {
-                             const isSubActive = location.pathname === subItem.path;
+                             const isSubActive = isSettingsActive && currentTab === subItem.tab;
                              return (
                                 <button
                                     key={subItem.label}
-                                    onClick={() => navigate(subItem.path)}
+                                    onClick={() => navigate(getSubItemPath(subItem.tab))} 
                                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full group ${
                                         isSubActive 
                                         ? 'bg-primary/10 text-primary' 
@@ -167,10 +177,11 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             </AnimatePresence>
         </div>
 
+        {/* Support Item */}
          <button
-            onClick={() => navigate('/user/support')}
+            onClick={() => navigate('/creator/support')}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full group ${
-                location.pathname === '/user/support'
+                location.pathname === '/creator/support'
                 ? 'bg-primary/10 text-primary' 
                 : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400'
             }`}
@@ -184,26 +195,22 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       </nav>
 
       {/* Profile Section */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
         <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div 
-             className="bg-center bg-no-repeat bg-cover rounded-full h-9 w-9 shrink-0 ring-2 ring-slate-100 dark:ring-slate-700" 
-             style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB2XbClk2r-PpSha3lWrcvYJrgc3eCUSSmfJ4TPH4W0cxXQkpIHie9VtDfQp1Pev39roiFj-slFUno18fTg-TTrNhRzVA_XaJHjDHvWTiyf-zrHqk28emmh-CzDFHOc-botfIeosl1ZUSpEbGVI61BWzaCVJ8qm8ORQ9U62ksMMQa_PMrPhBKezftZeoCWaz2P93KrF4B69b34nGEJlnPH2K0ZmBag77P54nmbfjjeuF5iypOMpw1_6eMx7CQwPVKUOGsKBwR_BGHlZ")' }}
-          />
+           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+            {user.name ? user.name.charAt(0) : 'C'}
+          </div>
           
           {!isCollapsed && (
-            <div className="flex flex-col min-w-0 overflow-hidden">
-              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">Alex Morgan</p>
-              <p className="text-slate-500 text-[10px] truncate">alex@example.com</p>
+            <div className="flex flex-col min-w-0 overflow-hidden text-left">
+              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{user.name}</p>
+              <p className="text-slate-500 text-[10px] truncate">Creator Account</p>
             </div>
           )}
         </div>
         
         <button 
-           onClick={() => {
-             logout();
-             navigate('/login');
-           }}
+           onClick={logout}
            className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 ${isCollapsed ? 'justify-center' : ''}`}
            title="Logout"
         >
@@ -215,4 +222,4 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   );
 };
 
-export default Sidebar;
+export default CreatorSidebar;

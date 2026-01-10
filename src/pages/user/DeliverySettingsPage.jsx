@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { 
   User, 
   Clock, 
@@ -22,8 +23,8 @@ const DeliverySettingsPage = () => {
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 custom-scrollbar">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
             <div className="max-w-4xl mx-auto">
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     
@@ -130,6 +131,7 @@ const DeliverySettingsPage = () => {
                 </div>
             </div>
         </div>
+        <MobileBottomNav />
       </div>
     </div>
   );

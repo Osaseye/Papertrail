@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { 
   Search, 
   Monitor, 
@@ -43,7 +44,7 @@ const ExplorePage = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-24 md:pb-4">
             <div className="max-w-4xl mx-auto w-full flex flex-col gap-5">
 
             {/* Hero Search Section */}
@@ -423,6 +424,7 @@ const ExplorePage = () => {
             
             </div>
         </div>
+        <MobileBottomNav />
       </main>
     </div>
   );
