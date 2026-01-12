@@ -4,7 +4,7 @@ import { Mail, Twitter, Github, Linkedin } from 'lucide-react';
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center mb-4">
@@ -20,6 +20,7 @@ export default function Footer() {
           
           <div>
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">Platform</h3>
+            <p className="text-sm text-gray-500 mb-2">Discover creators, explore collections, and learn how Papertrail helps you focus.</p>
             <ul className="space-y-3">
               <li><Link to="/explore" className="text-gray-500 hover:text-primary text-sm">Explore</Link></li>
               <li><Link to="/pricing" className="text-gray-500 hover:text-primary text-sm">Pricing</Link></li>
@@ -29,6 +30,7 @@ export default function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">Legal</h3>
+            <p className="text-sm text-gray-500 mb-2">Policies and terms that govern how Papertrail protects creators and readers.</p>
             <ul className="space-y-3">
               <li><Link to="/privacy" className="text-gray-500 hover:text-primary text-sm">Privacy Policy</Link></li>
               <li><Link to="/terms" className="text-gray-500 hover:text-primary text-sm">Terms of Service</Link></li>
@@ -38,6 +40,7 @@ export default function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">Social</h3>
+            <p className="text-sm text-gray-500 mb-2">Follow product updates, creator highlights, and community news.</p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-primary transition-colors">
                 <Twitter size={20} />

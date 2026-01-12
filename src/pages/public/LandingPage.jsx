@@ -452,35 +452,34 @@ const LandingPage = () => {
           </div>
         </section>
       </main>
-      <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-20">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-20 grid grid-cols-2 md:grid-cols-4 gap-12">
-          <div className="col-span-2 md:col-span-1 flex flex-col gap-6">
-            <div className="flex items-center gap-3">
-               <img src="/logo.png" alt="Papertrail" className="h-16 w-auto object-contain"/>
-            </div>
-            <p className="text-sm text-slate-500">Connecting minds through the power of written knowledge. Built for focus, built for impact.</p>
+      {/* Landing-specific footer with short write-ups instead of link lists */}
+      <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-12">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-20 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="col-span-1 md:col-span-1">
+            <img src="/logo.png" alt="Papertrail" className="h-12 mb-4" />
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Papertrail brings clarity to your inbox and power to your pen. We help readers rediscover focus and creators build direct, lasting relationships with their audience.
+            </p>
           </div>
-          <div className="flex flex-col gap-4">
-            <h5 className="font-bold">Readers</h5>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Find Creators</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">User Pricing</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Help Center</a>
+
+          <div>
+            <h5 className="font-bold mb-2">For Readers</h5>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Curate the newsletters you actually want to read. Papertrail bundles, highlights, and delivers them on your schedule so you can consume high-quality writing without the overwhelm.</p>
           </div>
-          <div className="flex flex-col gap-4">
-            <h5 className="font-bold">Creators</h5>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Creator Studio</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Creator Pricing</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Terms of Revenue</a>
+
+          <div>
+            <h5 className="font-bold mb-2">For Creators</h5>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Own your audience and monetize directly. Our tools help you write, publish, and grow while keeping the relationship between you and your readers simple and sustainable.</p>
           </div>
-          <div className="flex flex-col gap-4">
-            <h5 className="font-bold">Company</h5>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">About Us</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a className="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Careers</a>
+
+          <div>
+            <h5 className="font-bold mb-2">About</h5>
+            <p className="text-sm text-slate-600 dark:text-slate-400">We’re a small team focused on long-form reading and independent writers. No advertisements, no algorithmic manipulation — just better reading and better publishing.</p>
           </div>
         </div>
-        <div className="max-w-[1400px] mx-auto mt-20 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 px-6">
-          © 2024 Papertrail Technologies Inc. All rights reserved. Designed for Readers and Writers.
+
+            <div className="max-w-4xl mx-auto mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 text-center text-[11px] text-slate-400 px-4">
+          © {new Date().getFullYear()} Papertrail Technologies Inc. All rights reserved.
         </div>
       </footer>
     </div>

@@ -43,7 +43,7 @@ export default function LoginPage() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex h-screen w-full flex-col lg:flex-row font-display bg-background-light dark:bg-background-dark text-[#0d141b] dark:text-slate-50 transition-colors duration-200 overflow-hidden"
+      className="flex min-h-screen w-full flex-col lg:flex-row font-display bg-background-light dark:bg-background-dark text-[#0d141b] dark:text-slate-50 transition-colors duration-200 overflow-hidden"
     >
       {/* Left Branding Section (Visible on Desktop) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-8 xl:p-12 bg-primary relative overflow-hidden">
@@ -103,31 +103,31 @@ export default function LoginPage() {
           {/* Role Selection */}
           <div className="mb-6">
             <p className="text-[#0d141b] dark:text-slate-50 text-xs font-medium leading-normal mb-2">Continue as:</p>
-            <div className="flex h-10 w-full bg-[#e7edf3] dark:bg-slate-800 rounded-lg p-1 relative isolate">
-                <div className="grid grid-cols-2 w-full h-full relative z-20">
-                     <button
+            <div className="flex h-10 w-full bg-[#e7edf3] dark:bg-slate-800 rounded-lg px-2 py-1 relative isolate overflow-hidden">
+               <div className="grid grid-cols-2 w-full h-full relative z-20">
+                  <button
                         type="button"
                         onClick={() => setRole('User')}
-                        className={`text-xs font-semibold transition-colors duration-200 ${role === 'User' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
+                    className={`text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${role === 'User' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
                         User
                      </button>
                      <button
                         type="button"
                         onClick={() => setRole('Content Creator')}
-                        className={`text-xs font-semibold transition-colors duration-200 ${role === 'Content Creator' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
+                    className={`text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${role === 'Content Creator' ? 'text-[#0d141b] dark:text-white' : 'text-[#4c739a] dark:text-slate-400'}`}
                      >
                         Content Creator
                      </button>
                 </div>
                 <motion.div
-                    className="absolute top-1 bottom-1 bg-white dark:bg-slate-700 rounded-md shadow-sm z-10"
-                    initial={false}
-                    animate={{
-                        x: role === 'User' ? '0%' : '100%',
-                        width: '50%'
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="absolute top-1 bottom-1 bg-white dark:bg-slate-700 rounded-md shadow-sm z-10 will-change-transform"
+                  initial={false}
+                  animate={{
+                    x: role === 'User' ? '0%' : '100%'
+                  }}
+                    style={{ width: '48%' }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
             </div>
           </div>

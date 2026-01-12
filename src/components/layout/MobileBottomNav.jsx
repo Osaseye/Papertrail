@@ -22,6 +22,9 @@ const MobileBottomNav = () => {
     const { logout } = useAuth();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const menuRef = useRef(null);
+    const triggerRef = useRef(null);
+    const [menuWidth, setMenuWidth] = useState(0);
+    const [originX, setOriginX] = useState(null);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -36,6 +39,31 @@ const MobileBottomNav = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // Measure menu width and trigger button position to compute a responsive radius
+    useEffect(() => {
+        const el = menuRef.current;
+        if (!el) return;
+        const measure = () => {
+            const menuRect = el.getBoundingClientRect();
+            setMenuWidth(Math.round(menuRect.width || 0));
+            const triggerEl = triggerRef.current;
+            if (triggerEl) {
+                const tRect = triggerEl.getBoundingClientRect();
+                // originX is the center X of the trigger relative to the menu container
+                setOriginX(Math.round((tRect.left + tRect.width / 2) - menuRect.left));
+            } else {
+                setOriginX(Math.round(menuRect.width / 2));
+            }
+        };
+
+        measure();
+        const ro = new ResizeObserver(() => measure());
+        ro.observe(el);
+        // also observe trigger if present
+        if (triggerRef.current) ro.observe(triggerRef.current);
+        return () => ro.disconnect();
+    }, [menuRef, triggerRef]);
 
     const navItems = [
         { icon: LayoutDashboard, label: "Home", path: "/user/dashboard" },
@@ -89,7 +117,7 @@ const MobileBottomNav = () => {
 
             <div 
                 ref={menuRef}
-                className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe z-50 flex justify-around items-center px-2 py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
+                className="md:hidden fixed bottom-4 left-1/2 transform -translate-x-1/2 w-[calc(100%-48px)] max-w-md bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-full z-50 flex justify-around items-center px-4 py-2 shadow-lg"
             >
                 {navItems.map((item, index) => {
                     const isActive = item.path ? location.pathname === item.path : false;
@@ -99,35 +127,12 @@ const MobileBottomNav = () => {
                         <div key={item.label} className="relative flex justify-center">
                             
                             {/* Sub Menu Items (Only for Settings) */}
-                            {item.isTrigger && (
-                                <AnimatePresence>
-                                    {isSettingsOpen && (
-                                        <div className="absolute bottom-full mb-4 flex flex-col items-center gap-3 w-max">
-                                            {settingsSubItems.map((subItem, i) => (
-                                                <motion.button
-                                                    key={subItem.label}
-                                                    initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    transition={{ delay: i * 0.05 }}
-                                                    onClick={() => handleSubItemClick(subItem)}
-                                                    className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-4 py-2.5 rounded-full shadow-lg hover:scale-105 transition-transform"
-                                                >
-                                                    <span className={`text-xs font-bold whitespace-nowrap ${subItem.action === 'logout' ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                                                        {subItem.label}
-                                                    </span>
-                                                    <div className={`p-1.5 rounded-full ${subItem.color}`}>
-                                                        <subItem.icon size={16} />
-                                                    </div>
-                                                </motion.button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </AnimatePresence>
-                            )}
+                            {/* submenu is rendered at menu container level */}
 
                             <button
+                                ref={item.isTrigger ? triggerRef : null}
                                 onClick={() => handleNavClick(item)}
-                                className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all min-w-[64px] z-50 ${
+                                className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all min-w-[52px] z-50 ${
                                     (isActive || (item.isTrigger && isSettingsActive))
                                     ? 'text-primary' 
                                     : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
@@ -160,6 +165,46 @@ const MobileBottomNav = () => {
                         </div>
                     );
                 })}
+
+                {/* Submenu rendered once inside the menu container so coordinates match */}
+                <AnimatePresence>
+                    {isSettingsOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute bottom-full mb-2 left-0 w-full h-[140px] pointer-events-none"
+                        >
+                            {settingsSubItems.map((subItem, i) => {
+                                const n = settingsSubItems.length;
+                                const base = menuWidth || 320;
+                                const radius = Math.max(36, Math.min(64, Math.round(base * 0.14)));
+                                const angleStep = Math.PI / (n - 1);
+                                const angle = Math.PI - angleStep * i; // left-to-right semicircle
+                                const x = Math.round(radius * Math.cos(angle));
+                                const y = Math.round(radius * Math.sin(angle));
+                                const origin = typeof originX === 'number' ? originX : Math.round((menuWidth || 320) / 2);
+                                return (
+                                    <motion.button
+                                        key={subItem.label}
+                                        initial={{ opacity: 0, scale: 0.72, y: 8 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.72, y: 8 }}
+                                        transition={{ type: 'spring', stiffness: 360, damping: 28, delay: i * 0.04 }}
+                                        onClick={() => handleSubItemClick(subItem)}
+                                        style={{ position: 'absolute', left: `${origin + x}px`, bottom: `${y}px`, transform: 'translateX(-50%)' }}
+                                        className="pointer-events-auto absolute w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-lg flex items-center justify-center border border-slate-100 dark:border-slate-700 hover:scale-105 transition-transform"
+                                        aria-label={subItem.label}
+                                    >
+                                        <div className={`p-1.5 rounded-full ${subItem.color}`}>
+                                            <subItem.icon size={18} />
+                                        </div>
+                                    </motion.button>
+                                );
+                            })}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </>
     );
