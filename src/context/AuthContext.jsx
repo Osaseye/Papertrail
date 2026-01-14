@@ -5,7 +5,9 @@ import {
   onAuthStateChanged, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signOut 
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -103,6 +105,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (targetRole = 'user') => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check existence
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      const creatorDocRef = doc(db, 'creators', user.uid);
+      const creatorDoc = await getDoc(creatorDocRef);
+
+      let role = null;
+      if (userDoc.exists()) {
+        role = 'user';
+      } else if (creatorDoc.exists()) {
+        role = 'creator';
+      } else {
+        // New user - we might need to create a basic doc or let onboarding handle it
+        // For now, return success but no role, letting the UI redirect to onboarding
+        // We can optionally pre-create the doc here based on targetRole, but onboarding is better for collecting extra info
+      }
+
+      return { success: true, role, isNewUser: (!role) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -116,7 +148,7 @@ export const AuthProvider = ({ children }) => {
     return <LoadingScreen />;
   }
   return (
-    <AuthContext.Provider value={{ user, signUp, signIn, logout, loading }}>
+    <AuthContext.Provider value={{ user, signUp, signIn, loginWithGoogle, logout, loading }}>
       {loading ? <LoadingScreen /> : children}
     </AuthContext.Provider>
   );

@@ -12,8 +12,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
-  const { signIn } = useAuth();
+  const { signIn, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    
+    // Default to 'user' role for login check, but the context handles redirection logic
+    const result = await loginWithGoogle(role === 'Content Creator' ? 'creator' : 'user');
+    setLoading(false);
+
+    if (result.success) {
+      if (result.isNewUser) {
+         // Redirect to onboarding if we couldn't find a role profile
+         navigate(role === 'User' ? '/onboarding' : '/creator-onboarding');
+      } else if (result.role === 'user') {
+        navigate('/user/dashboard');
+      } else if (result.role === 'creator') {
+        navigate('/creator/dashboard');
+      }
+    } else {
+      setError(result.error);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -172,7 +194,7 @@ export default function LoginPage() {
             <div className="flex flex-col">
               <div className="flex justify-between items-center pb-1.5">
                 <label className="text-[#0d141b] dark:text-slate-50 text-xs font-medium leading-normal">Password</label>
-                <Link to="/forgot-password" class="text-primary text-xs font-semibold hover:underline">Forgot password?</Link>
+                <Link to="/forgot-password" className="text-primary text-xs font-semibold hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#4c739a] select-none text-[20px]">lock</span>
@@ -221,7 +243,12 @@ export default function LoginPage() {
 
           {/* Social Logins */}
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 h-10 px-4 border border-[#cfdbe7] dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-[#0d141b] dark:text-slate-50 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:border-slate-400">
+            <button 
+                type="button" 
+                onClick={handleGoogleLogin} 
+                disabled={loading}
+                className="flex items-center justify-center gap-2 h-10 px-4 border border-[#cfdbe7] dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-[#0d141b] dark:text-slate-50 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>

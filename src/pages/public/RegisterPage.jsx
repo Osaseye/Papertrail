@@ -18,8 +18,30 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
 
-  const { signUp } = useAuth();
+  const { signUp, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleRegister = async () => {
+    setLoading(true);
+    setError('');
+    
+    // Default to 'user' role for login check, but the context handles redirection logic
+    const result = await loginWithGoogle(role === 'Content Creator' ? 'creator' : 'user');
+    setLoading(false);
+
+    if (result.success) {
+      if (result.isNewUser) {
+         // Redirect to onboarding if we couldn't find a role profile
+         navigate(role === 'User' ? '/onboarding' : '/creator-onboarding');
+      } else if (result.role === 'user') {
+        navigate('/user/dashboard');
+      } else if (result.role === 'creator') {
+        navigate('/creator/dashboard');
+      }
+    } else {
+      setError(result.error);
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -256,7 +278,12 @@ export default function RegisterPage() {
 
           {/* Social Logins */}
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 h-10 px-4 border border-[#cfdbe7] dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-[#0d141b] dark:text-slate-50 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:border-slate-400">
+            <button 
+                type="button" 
+                onClick={handleGoogleRegister}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 h-10 px-4 border border-[#cfdbe7] dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-[#0d141b] dark:text-slate-50 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
