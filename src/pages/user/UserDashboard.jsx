@@ -31,6 +31,7 @@ const DUMMY_NOTIFICATIONS = [];
 
 const UserDashboard = () => {
   const { user } = useAuth();
+  const [userName, setUserName] = useState(user?.displayName || 'User');
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'reading'
   
@@ -57,6 +58,20 @@ const UserDashboard = () => {
         if (!user) return;
 
         try {
+            // 0. Fetch User Profile Name (if not in Auth)
+            if (!user.displayName || user.displayName === 'User') {
+                 try {
+                     const userDoc = await getDoc(doc(db, 'users', user.uid));
+                     if (userDoc.exists()) {
+                         const userData = userDoc.data();
+                         if (userData.firstName) setUserName(userData.firstName);
+                         else if (userData.fullName) setUserName(userData.fullName.split(' ')[0]);
+                     }
+                 } catch (e) {
+                     console.error("Error fetching user profile:", e);
+                 }
+            }
+
             // 1. Fetch Subscriptions using Collection Group Query
             // This finds all 'subscribers' sub-collections across the DB where uid == user.uid
             const subQuery = query(collectionGroup(db, 'subscribers'), where("uid", "==", user.uid));
@@ -222,7 +237,7 @@ const UserDashboard = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         
         {/* Top Header */}
-        <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-white dark:bg-slate-900 z-10 shrink-0 h-16">
+        <header className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4 bg-white dark:bg-slate-900 relative z-[100] shrink-0 h-16">
           <div className="flex items-center gap-4">
              {view === 'reading' && (
                 <button 
@@ -235,7 +250,7 @@ const UserDashboard = () => {
              {view === 'reading' ? (
                 <h2 className="text-base font-bold">Reader View</h2>
              ) : (
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Welcome back, Alex</h1>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Welcome back, {userName}</h1>
              )}
           </div>
           

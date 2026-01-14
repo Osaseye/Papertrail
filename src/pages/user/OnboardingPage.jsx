@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
+import { updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Check, 
@@ -161,6 +162,13 @@ const OnboardingPage = () => {
                 const splitName = profile.preferredName.split(' ');
                 const firstName = splitName[0] || '';
                 const lastName = splitName.slice(1).join(' ') || '';
+
+                // Update Auth Profile
+                if (firstName) {
+                    await updateProfile(user, {
+                        displayName: firstName
+                    });
+                }
 
                 await setDoc(doc(db, 'users', user.uid), {
                     firstName,
