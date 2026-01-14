@@ -13,10 +13,13 @@ import {
   User,
   CreditCard,
   Shield,
-  Edit3
+  Edit3,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'; 
+import { useTheme } from '../../context/ThemeContext'; 
 
 const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
   const navigate = useNavigate();
@@ -25,6 +28,7 @@ const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log("Logout clicked"));
   const user = auth?.user || { name: "Creator", email: "creator@papertrail.com" };
+  const { theme, toggleTheme } = useTheme();
 
   // State to track if the settings menu is expanded
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
@@ -197,9 +201,16 @@ const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
       {/* Profile Section */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
         <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
+           {user.photoURL || user.avatar ? (
+            <div 
+             className="bg-center bg-no-repeat bg-cover rounded-full h-9 w-9 shrink-0 ring-2 ring-slate-100 dark:ring-slate-700" 
+             style={{ backgroundImage: `url("${user.photoURL || user.avatar}")` }}
+            />
+          ) : (
            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
             {user.name ? user.name.charAt(0) : 'C'}
           </div>
+          )}
           
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 overflow-hidden text-left">

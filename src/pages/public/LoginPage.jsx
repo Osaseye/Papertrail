@@ -12,10 +12,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
-  const { loginAsUser, loginAsCreator } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please fill in all fields');
@@ -24,17 +24,25 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // Simulate loading delay
-    setTimeout(() => {
-      setLoading(false);
-      if (role === 'User') {
-        loginAsUser();
+    const result = await signIn(email, password);
+    setLoading(false);
+
+    if (result.success) {
+      if (result.role === 'user') {
         navigate('/user/dashboard');
-      } else {
-        loginAsCreator();
+      } else if (result.role === 'creator') {
         navigate('/creator/dashboard');
+      } else {
+        // Fallback if role is not found (maybe rely on local toggle or go to onboarding)
+        if (role === 'User') {
+             navigate('/onboarding'); // Logic assumption
+        } else {
+             navigate('/creator-onboarding');
+        }
       }
-    }, 1500); 
+    } else {
+      setError(result.error);
+    }
   };
 
   return (

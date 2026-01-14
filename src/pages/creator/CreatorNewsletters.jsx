@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
 import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import {  
   Plus, 
   Search, 
@@ -12,55 +15,76 @@ import {
   BarChart2, 
   Eye, 
   Trash2,
-  Calendar
+  Calendar,
+  PenTool
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const MOCK_NEWSLETTERS = [
-  { 
-    id: 1, 
-    title: 'Weekly Creator Insights #42', 
-    subject: 'Why micro-communities are the future', 
-    status: 'Draft', 
-    date: 'Last edited 2h ago', 
-    stats: null 
-  },
-  { 
-    id: 2, 
-    title: 'Tech Trends Report - Q3 2024', 
-    subject: 'AI is changing everything, again.', 
-    status: 'Scheduled', 
-    date: 'Sends tomorrow at 9:00 AM', 
-    stats: null 
-  },
-  { 
-    id: 3, 
-    title: 'The minimalist approach to coding', 
-    subject: 'Less code, more value. Here is how.', 
-    status: 'Published', 
-    date: 'Sent on Oct 12, 2024', 
-    stats: { openRate: '42%', ctr: '12%' } 
-  },
-  { 
-    id: 4, 
-    title: 'Welcome to my newsletter!', 
-    subject: 'Thanks for subscribing - here is what to expect.', 
-    status: 'Published', 
-    date: 'Sent on Sep 01, 2024', 
-    stats: { openRate: '68%', ctr: '24%' } 
-  },
-];
 
 const CreatorNewsletters = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
+  const [newsletters, setNewsletters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
+  useEffect(() => {
+    const fetchNewsletters = async () => {
+        if (!user) return;
+        
+        try {
+            const q = query(
+                collection(db, 'newsletters'), 
+                where('creatorId', '==', user.uid),
+                orderBy('updatedAt', 'desc')
+            );
+            const querySnapshot = await getDocs(q);
+            const items = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    // Normalize status for UI Tabs
+                    statusDisplay: data.status === 'sent' ? 'Published' : data.status === 'scheduled' ? 'Scheduled' : 'Draft',
+                    // Date formatting
+                    date: data.updatedAt?.seconds 
+                        ? new Date(data.updatedAt.seconds * 1000).toLocaleDateString() 
+                        : 'Just now',
+                    // Stats mapping
+                    openRate: data.stats?.openRate || 0,
+                    clicks: data.stats?.clicks || 0,
+                    sentCount: 0 
+                };
+            });
+            setNewsletters(items);
+        } catch (error) {
+            console.error("Error fetching newsletters:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchNewsletters();
+  }, [user]);
+
+  const handleDelete = async (newsletterId) => {
+      if (window.confirm("Are you sure you want to delete this newsletter?")) {
+        try {
+            await deleteDoc(doc(db, 'newsletters', newsletterId));
+            setNewsletters(prev => prev.filter(n => n.id !== newsletterId));
+        } catch (error) {
+            console.error("Error deleting newsletter:", error);
+        }
+      }
+  };
+
   const filteredNewsletters = activeTab === 'All' 
-    ? MOCK_NEWSLETTERS 
-    : MOCK_NEWSLETTERS.filter(n => n.status === activeTab);
+    ? newsletters 
+    : newsletters.filter(n => n.statusDisplay === activeTab);
+
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
@@ -103,75 +127,105 @@ const CreatorNewsletters = () => {
 
             {/* List */}
             <div className="space-y-4">
-                {filteredNewsletters.map((newsletter) => (
-                    <div 
-                        key={newsletter.id}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:shadow-md transition-shadow group"
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-4">
-                                <div className={`p-3 rounded-lg flex-shrink-0 ${
-                                    newsletter.status === 'Draft' ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' :
-                                    newsletter.status === 'Scheduled' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-500' :
-                                    'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-500'
-                                }`}>
-                                    {newsletter.status === 'Draft' ? <FileText size={20} /> :
-                                     newsletter.status === 'Scheduled' ? <Clock size={20} /> :
-                                     <CheckCircle size={20} />}
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="font-semibold text-lg text-slate-900 dark:text-white group-hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/creator/editor')}>
-                                            {newsletter.title}
-                                        </h3>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                            newsletter.status === 'Draft' ? 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' :
-                                            newsletter.status === 'Scheduled' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/10 dark:text-amber-500 dark:border-amber-900/30' :
-                                            'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/10 dark:text-green-500 dark:border-green-900/30'
-                                        }`}>
-                                            {newsletter.status}
-                                        </span>
+                {filteredNewsletters.length > 0 ? (
+                    filteredNewsletters.map((newsletter) => (
+                        <div 
+                            key={newsletter.id}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:shadow-md transition-shadow group"
+                        >
+                             {/* ... existing card content ... */}
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start gap-4">
+                                    <div className={`p-3 rounded-lg flex-shrink-0 ${
+                                        newsletter.status === 'draft' ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' :
+                                        newsletter.status === 'scheduled' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-500' :
+                                        'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-500'
+                                    }`}>
+                                        {newsletter.status === 'draft' ? <FileText size={20} /> :
+                                         newsletter.status === 'scheduled' ? <Clock size={20} /> :
+                                         <CheckCircle size={20} />}
                                     </div>
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">
-                                        {newsletter.subject}
-                                    </p>
-                                    <div className="flex items-center gap-4 text-xs font-medium text-slate-400 dark:text-slate-500">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar size={12} /> {newsletter.date}
-                                        </span>
-                                        {newsletter.stats && (
-                                            <>
-                                                <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
-                                                <span className="text-slate-700 dark:text-slate-300">Open Rate: {newsletter.stats.openRate}</span>
-                                                <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
-                                                <span className="text-slate-700 dark:text-slate-300">CTR: {newsletter.stats.ctr}</span>
-                                            </>
-                                        )}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h3 className="font-semibold text-lg text-slate-900 dark:text-white group-hover:text-primary transition-colors cursor-pointer" onClick={() => navigate('/creator/editor', { state: { newsletterId: newsletter.id } })}>
+                                                {newsletter.subject || 'Untitled Newsletter'}
+                                            </h3>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                                newsletter.status === 'draft' ? 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' :
+                                                newsletter.status === 'scheduled' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/10 dark:text-amber-500 dark:border-amber-900/30' :
+                                                'bg-green-50 text-green-600 border-green-200 dark:bg-green-900/10 dark:text-green-500 dark:border-green-900/30'
+                                            }`}>
+                                                {newsletter.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-3 limit-text-2-lines">
+                                            {newsletter.previewText || 'No preview available'}
+                                        </p>
+                                        <div className="flex items-center gap-4 text-xs font-medium text-slate-400 dark:text-slate-500">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar size={12} /> {newsletter.updatedAt?.toDate ? newsletter.updatedAt.toDate().toLocaleDateString() : 'Just now'}
+                                            </span>
+                                            {newsletter.stats && (
+                                                <>
+                                                    <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+                                                    <span className="text-slate-700 dark:text-slate-300">Opens: {newsletter.stats.opens || 0}</span>
+                                                    <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+                                                    <span className="text-slate-700 dark:text-slate-300">Clicks: {newsletter.stats.clicks || 0}</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="flex items-center gap-2">
-                                {newsletter.status === 'Draft' && (
-                                    <button 
-                                        onClick={() => navigate('/creator/editor')}
-                                        className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Edit"
-                                    >
-                                        <Edit3 size={18} />
+                                <div className="flex items-center gap-2">
+                                    {newsletter.status === 'draft' && (
+                                        <>
+                                            <button 
+                                                onClick={() => navigate('/creator/editor', { state: { newsletterId: newsletter.id } })}
+                                                className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Edit"
+                                            >
+                                                <Edit3 size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(newsletter.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors" 
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </>
+                                    )}
+                                    {newsletter.status === 'sent' && (
+                                        <button className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="View Stats">
+                                            <BarChart2 size={18} />
+                                        </button>
+                                    )}
+                                    <button className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                                        <MoreHorizontal size={18} />
                                     </button>
-                                )}
-                                {newsletter.status === 'Published' && (
-                                    <button className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="View Stats">
-                                        <BarChart2 size={18} />
-                                    </button>
-                                )}
-                                <button className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                                    <MoreHorizontal size={18} />
-                                </button>
+                                </div>
                             </div>
                         </div>
+                    ))
+                ) : (
+                     <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 mt-8">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-sm mb-4">
+                            <PenTool className="size-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No newsletters found</h3>
+                        <p className="text-slate-500 dark:text-slate-400 max-w-sm text-sm mb-6">
+                            {activeTab === 'All' 
+                                ? "You haven't created any newsletters yet. Start writing your first post!" 
+                                : `You don't have any ${activeTab.toLowerCase()} newsletters.`}
+                        </p>
+                        <button 
+                            onClick={() => navigate('/creator/editor')}
+                            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-colors"
+                        >
+                            Create First Draft
+                        </button>
                     </div>
-                ))}
+                )}
             </div>
 
         </main>

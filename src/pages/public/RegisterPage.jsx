@@ -18,10 +18,10 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
 
-  const { loginAsUser, loginAsCreator } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
         setError('Please fill in all fields');
@@ -34,18 +34,20 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
 
-    // Simulate loading delay
-    setTimeout(() => {
-      setLoading(false);
+    const result = await signUp(formData.email, formData.password, role, formData.name);
+
+    setLoading(false);
+    
+    if (result.success) {
       // For now, redirect to dashboard similar to login
       if (role === 'User') {
-        loginAsUser();
         navigate('/onboarding');
       } else {
-        loginAsCreator();
         navigate('/creator-onboarding');
       }
-    }, 1500); 
+    } else {
+      setError(result.error);
+    }
   };
 
   return (

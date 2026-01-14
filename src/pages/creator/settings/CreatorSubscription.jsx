@@ -1,7 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreditCard, CheckCircle2, Zap, ArrowRight, Star } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { db } from '../../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const CreatorSubscription = () => {
+    const { user } = useAuth();
+    const [plan, setPlan] = useState('free');
+    const [stats, setStats] = useState({ subs: 0, sent: 0 });
+
+    useEffect(() => {
+        const fetchPlan = async () => {
+            if (!user) return;
+            try {
+                // Fetch Plan info from 'creators' (account level)
+                const creatorDoc = await getDoc(doc(db, 'creators', user.uid));
+                if (creatorDoc.exists()) {
+                    setPlan(creatorDoc.data().subscriptionPlan || 'free');
+                }
+                
+                // Fetch Real Stats (subs count) from 'creator-brands' (public brand level)
+                const brandDoc = await getDoc(doc(db, 'creator-brands', user.uid));
+                if (brandDoc.exists()) {
+                     const data = brandDoc.data();
+                     // Use real stats if we have them, else fallback or mock
+                     setStats({
+                        subs: data.subscribers || 0,
+                        sent: data.stats?.totalNewsletters || 0 // or fetch count from newsletters collection
+                     });
+                }
+            } catch (e) {
+                console.error("Error fetching plan", e);
+            }
+        };
+        fetchPlan();
+    }, [user]);
+
+    const isPro = plan === 'pro' || plan === 'growth';
+
     return (
         <div className="space-y-8">
             <div className="space-y-2">
@@ -15,17 +51,23 @@ const CreatorSubscription = () => {
                     <div className="flex flex-col gap-2">
                          <div className="flex items-center gap-2">
                             <span className="text-sm font-bold uppercase tracking-wider text-slate-500">Current Plan</span>
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">Free Tier</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${isPro ? 'bg-primary/10 text-primary border-primary/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>
+                                {plan.charAt(0).toUpperCase() + plan.slice(1)} Tier
+                            </span>
                          </div>
-                         <h3 className="text-3xl font-bold text-slate-900 dark:text-white">Starter</h3>
+                         <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{isPro ? 'Pro Creator' : 'Starter'}</h3>
                          <p className="text-slate-500 dark:text-slate-400 max-w-sm">
-                            Perfect for getting started. You can have up to 500 subscribers and send 2,000 emails per month.
+                            {isPro 
+                                ? "You have access to all advanced features, verifying your status as a top creator." 
+                                : "Perfect for getting started. Upgrade to unlock unlimited subscribers and analytics."}
                          </p>
                     </div>
                     <div className="flex flex-col gap-3 w-full md:w-auto">
-                        <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
-                            <Zap size={18} fill="currentColor" /> Upgrade to Pro
-                        </button>
+                        {!isPro && (
+                            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                                <Zap size={18} fill="currentColor" /> Upgrade to Pro
+                            </button>
+                        )}
                         <button className="px-6 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                             Manage Billing
                         </button>
@@ -36,10 +78,10 @@ const CreatorSubscription = () => {
                     <div>
                         <div className="flex justify-between mb-2 text-sm font-medium">
                             <span className="text-slate-700 dark:text-slate-300">Subscribers</span>
-                            <span className="text-slate-900 dark:text-white">350 / 500</span>
+                            <span className="text-slate-900 dark:text-white">{stats.subs} / {isPro ? 'Unlimited' : '500'}</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-primary rounded-full w-[70%]" />
+                            <div className="h-full bg-primary rounded-full" style={{ width: isPro ? '5%' : `${Math.min((stats.subs / 500) * 100, 100)}%` }} />
                         </div>
                     </div>
                     <div>

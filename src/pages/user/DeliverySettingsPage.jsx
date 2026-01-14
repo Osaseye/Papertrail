@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { 
   User, 
   Clock, 
@@ -9,16 +13,71 @@ import {
   CheckCircle, 
   ChevronDown, 
   Download,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 
 const DeliverySettingsPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { user } = useAuth();
+  const { addToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   // Form States
   const [preferredHour, setPreferredHour] = useState('10:00');
   const [frequency, setFrequency] = useState('daily');
   const [isConsolidated, setIsConsolidated] = useState(true);
+
+  // Fetch Settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+        if (!user) return;
+        try {
+            const docRef = doc(db, 'users', user.uid);
+            const snap = await getDoc(docRef);
+
+            if (snap.exists()) {
+                const data = snap.data();
+                if (data.deliverySettings) {
+                    const settings = data.deliverySettings;
+                    if (settings.preferredHour) setPreferredHour(settings.preferredHour);
+                    if (settings.frequency) setFrequency(settings.frequency);
+                    if (settings.isConsolidated !== undefined) setIsConsolidated(settings.isConsolidated);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching delivery settings", error);
+            addToast("Failed to load settings", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchSettings();
+  }, [user]);
+
+  const handleSave = async () => {
+      if (!user) return;
+      setSaving(true);
+      try {
+          const docRef = doc(db, 'users', user.uid);
+          await updateDoc(docRef, {
+              deliverySettings: {
+                  preferredHour,
+                  frequency,
+                  isConsolidated
+              }
+          });
+          addToast("Delivery preferences updated", "success");
+      } catch (error) {
+          console.error("Error saving delivery settings", error);
+          addToast("Failed to save changes", "error");
+      } finally {
+          setSaving(false);
+      }
+  };
+
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -45,13 +104,18 @@ const DeliverySettingsPage = () => {
                                     <select 
                                         value={preferredHour}
                                         onChange={(e) => setPreferredHour(e.target.value)}
-                                        className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                                        className="w-full appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary focus:border-primary outline-none cursor-pointer custom-scrollbar"
                                     >
-                                        <option value="08:00">08:00 AM</option>
-                                        <option value="09:00">09:00 AM</option>
-                                        <option value="10:00">10:00 AM</option>
-                                        <option value="11:00">11:00 AM</option>
-                                        <option value="12:00">12:00 PM</option>
+                                        {Array.from({ length: 24 }).map((_, i) => {
+                                            const hour = i.toString().padStart(2, '0');
+                                            const time = `${hour}:00`;
+                                            const displayTime = new Date(`2000-01-01T${time}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                            return (
+                                                <option key={time} value={time}>
+                                                    {displayTime} (UTC)
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
                                 </div>
@@ -120,11 +184,19 @@ const DeliverySettingsPage = () => {
 
                     {/* Footer Actions */}
                     <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-                        <button className="px-6 py-2.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <button 
+                            className="px-6 py-2.5 rounded-lg text-sm font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            disabled={saving}
+                        >
                             Discard
                         </button>
-                        <button className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-colors">
-                            Save Changes
+                        <button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {saving && <Loader2 size={16} className="animate-spin" />}
+                            {saving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
 

@@ -12,16 +12,65 @@ import {
   Clock,
   CreditCard,
   Shield,
-  ChevronDown
+  ChevronDown,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { LogOut } from 'lucide-react';
+import { db } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [displayAvatar, setDisplayAvatar] = useState(user?.photoURL || '');
+
+  useEffect(() => {
+      const fetchProfile = async () => {
+          if (!user) return;
+          // Default to Auth info
+          setDisplayName(user.displayName || 'User');
+          setDisplayAvatar(user.photoURL || '');
+
+          try {
+              // Priority: User Profile (Readers) -> Creator Profile (Creators)
+              const userDocRef = doc(db, 'users', user.uid);
+              const userSnap = await getDoc(userDocRef);
+              
+              if (userSnap.exists()) {
+                  const data = userSnap.data();
+                  if (data.fullName || data.firstName) {
+                      setDisplayName(data.fullName || `${data.firstName} ${data.lastName}`);
+                  }
+                  if (data.avatar || data.photoURL) {
+                      setDisplayAvatar(data.avatar || data.photoURL); 
+                  }
+                  return;
+              }
+
+              // Fallback to Creator Profile if no User profile
+              const creatorDocRef = doc(db, 'creators', user.uid);
+              const creatorSnap = await getDoc(creatorDocRef);
+              if (creatorSnap.exists()) {
+                  const data = creatorSnap.data();
+                  if (data.fullName) setDisplayName(data.fullName);
+                  if (data.personalPhoto) setDisplayAvatar(data.personalPhoto);
+              }
+
+          } catch (error) {
+              console.error("Sidebar profile fetch error", error);
+          }
+      };
+
+      fetchProfile();
+  }, [user]);
 
   // State to track if the settings menu is expanded
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
@@ -186,15 +235,21 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
       {/* Profile Section */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800">
         <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div 
+          {displayAvatar ? (
+            <div 
              className="bg-center bg-no-repeat bg-cover rounded-full h-9 w-9 shrink-0 ring-2 ring-slate-100 dark:ring-slate-700" 
-             style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB2XbClk2r-PpSha3lWrcvYJrgc3eCUSSmfJ4TPH4W0cxXQkpIHie9VtDfQp1Pev39roiFj-slFUno18fTg-TTrNhRzVA_XaJHjDHvWTiyf-zrHqk28emmh-CzDFHOc-botfIeosl1ZUSpEbGVI61BWzaCVJ8qm8ORQ9U62ksMMQa_PMrPhBKezftZeoCWaz2P93KrF4B69b34nGEJlnPH2K0ZmBag77P54nmbfjjeuF5iypOMpw1_6eMx7CQwPVKUOGsKBwR_BGHlZ")' }}
-          />
+             style={{ backgroundImage: `url("${displayAvatar}")` }}
+            />
+          ) : (
+            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 ring-2 ring-slate-100 dark:ring-slate-700 text-primary font-bold text-xs">
+                 {(displayName || user?.email || 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
           
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 overflow-hidden">
-              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">Alex Morgan</p>
-              <p className="text-slate-500 text-[10px] truncate">alex@example.com</p>
+              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{displayName}</p>
+              <p className="text-slate-500 text-[10px] truncate">{user?.email}</p>
             </div>
           )}
         </div>

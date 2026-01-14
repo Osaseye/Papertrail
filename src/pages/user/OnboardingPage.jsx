@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Check, 
   ChevronRight, 
@@ -30,14 +33,7 @@ const INTERESTS = [
   "Politics", "Science", "History", "Culture", "Sports"
 ];
 
-const MOCK_CREATORS = [
-  { id: 1, name: "FuturePulse", category: "Tech", followers: "120k", desc: "Exploring the frontiers of consumer technology and AI.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAeGWhKQJGkLZQoqud43VRC6Zo_C1818cA2I83vpxLs_8Z6NuOZ_l5N_mnWBZSUxIbYEQV6VQ3VQUnHJdQGf-zn4uYdCDkpch5fOvoldg44nzycXVnmsgNklL3HQtNAPIGqEQFAzDCew_21qCWbHLqJ1J9rLiRlXiMEe_D7oUo6gkY0Tm-002x_jVJWfVsKfrVA2Gp8Byowu_sfRtIriiUgoHRxWB5-BwLTxD6s7jHQ9UtDungARvwC57a7I7LgBflcXC1lJdQKXatS", verified: true },
-  { id: 2, name: "Peak Form", category: "Sports", followers: "85k", desc: "Elite athletic training programs and nutritional guides.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBLHuxt69yLpPuLxEWTUB_uwHqe7n2IFaTc6r_zkjR9GXCybFDw70fRjUb8L2Y3F9dHpHZkMTE0LSt-pv4Bh4nc7al8TXRAQUElIOMrn4lvELZjqurECjG9qWR0KWqHTF1l_n4nyOvuiM5rDnff_63uDZCED3KmW9MQu9zjhkVG5ScRQBf6CY0yaRd4tIdwNjTFzRzhXXxmgYgmitD5jejbKvDwPZPeGlLW9p2WfI3wdhGbR20qdh5XZKCLzoQZV0doZU04aSyzRVDt", verified: false },
-  { id: 3, name: "Market Mind", category: "Finance", followers: "200k", desc: "Simplified investing strategies and market insights.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBz6gjcuDy8VBzVTXaKjf1mWkxBwyfRLRWrcrgI7ydvZTVJQlPRNaNayHLECYFlqYOpQDvSD79t695aTlBikMaaF5B4xK-4Ypfyfz0nWuZ0Y7nM4xA6AmmMx5eAAGX-R09YtcJ1YHlI5AqgUENB-Rs8sRT1OKSCUeSZC6acUHsmziFP1TkQiYHPbyCN9Qs6_oW9WpViPCDVN7e6PmamEnLF0IZqCWHYokIp5XiLTXvq_RGF0gjWXdcEERYbrWVrdZYgdCf53p1T8O0g", verified: true },
-  { id: 4, name: "Nomadic Soul", category: "Travel", followers: "45k", desc: "Off-the-beaten-path adventures and sustainable travel.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBURCwnxVP4mBqvbYUbCKksq1PiUHkvkfaBsmE3LMepu8VNf25kKGH6jqrzinAh2dOwOZgNTlooNqkNCXRJaX7ez0vFSjX3AlFEvaBsNQM5EGcD_QwMwbdzdkT3fOHVlp-LgkpFJgdaQThYv9xZyfMezPVtkqCCcYbuwoXcjkg70Bq8lQ5BykJhPVoV_bRLwy0Ssirh9xPSlxO25gdxewDR3Yfu11EzDxMV3yfz6pPFMT1R5GwR_uEPQSZqtPFEOVLvcfjRPtFS_bcp", verified: false },
-  { id: 5, name: "Urban Ease", category: "Lifestyle", followers: "62k", desc: "Minimalist living and aesthetic home decor inspiration.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCWiqrgjHlKUj2HjdzVps_8MBjv2pLHZ4peh44geFjbnljJAeiGC3W88mhLU2Lxxd6_ckuyeZ_6V4z_owunhV7zhSjMZGA99DksC0k3sXQfpRFaNkZWnpoY1vrT8tTJruhPE-YWPj5X97NEIG3xDK6-6yPPCVV8aMi6Pn1UghE4K2s7Ql4vpAH_oywf0rmHqWRC8e8j-1GtK72iVO7ELx96EzE793CFFclu77vFjHadJuWVaBh6oDUqsVEwcF-xYSamPdsXrJVUvX6P", verified: false },
-  { id: 6, name: "Glitch Labs", category: "Gaming", followers: "110k", desc: "High-octane esports coverage and technical deep dives.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuA8xtZV3x-WLdWZQAEZWqQpUeR2tE0OqC87TX8DwBxtnrl1Kg2iLYFNBoiGd2KsSzcxcq-bCppQ5YwzY_q9rpgUaMJPK3SFX4nMEkjFEA3Ssms6wPIqv--bshUCF3vbR_OG7Zz2M3IKPfChPITxOBiuQZZRtGf1g1T-gEcI6zmoHv8C9cO_eeiK3N6DEK7-Ad4WTDxcrm18kiQaPZjkgoGQz_Hs_6wiTZ8ms0a4AQovTLivyIy6y6RZV0pNdQrqqUr6uPwAp6wSagwu", verified: true },
-];
+const MOCK_CREATORS = [];
 
 const COUNTRIES = [
   { code: "NG", name: "Nigeria" },
@@ -71,6 +67,7 @@ const COUNTRIES = [
 const OnboardingPage = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // State for Step 1: Personal Profile
   const [profile, setProfile] = useState({
@@ -79,6 +76,8 @@ const OnboardingPage = () => {
     country: '',
     phone: ''
   });
+
+  const [selectedInterests, setSelectedInterests] = useState([]);
 
   // State for Step 2: Creators
   const [following, setFollowing] = useState([]);
@@ -151,8 +150,50 @@ const OnboardingPage = () => {
   };
   
   const [progress, setProgress] = useState(0);
+  const dataSavedRef = React.useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const saveUserData = async () => {
+        if (isComplete && user && !dataSavedRef.current) {
+            dataSavedRef.current = true;
+            try {
+                // Determine names
+                const splitName = profile.preferredName.split(' ');
+                const firstName = splitName[0] || '';
+                const lastName = splitName.slice(1).join(' ') || '';
+
+                await setDoc(doc(db, 'users', user.uid), {
+                    firstName,
+                    lastName,
+                    fullName: profile.preferredName,
+                    dob: profile.dob,
+                    country: profile.country, // Store code or name? Usually code from select
+                    location: COUNTRIES.find(c => c.code === profile.country)?.name || profile.country,
+                    phone: profile.phone,
+                    email: user.email,
+                    
+                    // Preferences
+                    interests: selectedInterests,
+                    deliverySettings: deliverySettings,
+                    billingCycle: billingCycle,
+                    subscriptionPlan: selectedPlan,
+                    
+                    // Metadata
+                    role: 'reader',
+                    onboardingCompleted: true,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+
+                console.log("User onboarding data saved successfully");
+            } catch (error) {
+                console.error("Error saving user onboarding data:", error);
+            }
+        }
+    };
+
+    saveUserData();
+
     if (isComplete) {
       const timer = setInterval(() => {
         setProgress((prev) => {
@@ -470,6 +511,12 @@ const OnboardingPage = () => {
                  </div>
 
                   {/* Full Width Grid */}
+                  {MOCK_CREATORS.length === 0 ? (
+                      <div className="w-full text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                          <p className="text-slate-500 dark:text-slate-400 font-medium">No creators found to follow yet.</p>
+                          <p className="text-xs text-slate-400 mt-2">Check back later as our community grows!</p>
+                      </div>
+                  ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full mb-8">
                     {MOCK_CREATORS.map((creator) => (
                       <div 
@@ -535,6 +582,7 @@ const OnboardingPage = () => {
                       </div>
                     ))}
                   </div>
+                  )}
 
                   {/* Creator Detail Modal */}
                   <AnimatePresence>

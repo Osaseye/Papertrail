@@ -1,24 +1,144 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { useToast } from '../../context/ToastContext';
-import { Camera, User, Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { db, storage } from '../../lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Camera, User, Mail, Phone, MapPin, Globe, Loader2 } from 'lucide-react';
 
 const ProfileSettingsPage = () => {
     const { addToast } = useToast();
+    const { user } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    
+    // File state
+    const [avatarFile, setAvatarFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+
     const [formData, setFormData] = useState({
-        firstName: 'Alex',
-        lastName: 'Morgan',
-        email: 'alex@example.com',
-        phone: '+1 (555) 000-0000',
-        location: 'San Francisco, CA',
-        bio: 'Product Designer @ Papertrail. Loves minimalist UI and clean code.'
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        location: '',
+        bio: ''
     });
+
+    // Fetch existing data
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!user) return;
+            try {
+                // Determine collection based on role (standard user vs creator)
+                const isCreator = user.role === 'creator'; 
+                // Note: AuthContext attaches 'role' to user object. 
+                // However, we want to update the profile document. 
+                // If the user is a creator, they should probably edit this in "CreatorSettings", 
+                // but if they are here, we should probably update their 'personal' info.
+                // For simplicity, let's assume this page is primarily for 'users' collection updates
+                // UNLESS they are a creator, then we update 'creators' collection (personal info part).
+                
+                const collectionName = isCreator ? 'creators' : 'users';
+                const docRef = doc(db, collectionName, user.uid);
+                const docSnap = await getDoc(docRef);
+
+                let data = {};
+                if (docSnap.exists()) {
+                    data = docSnap.data();
+                }
+
+                setFormData({
+                    firstName: data.firstName || '',
+                    lastName: data.lastName || '',
+                    email: user.email,
+                    phone: data.phone || '',
+                    location: data.location || data.country || '',
+                    bio: data.bio || ''
+                });
+
+                if (data.photoURL || data.avatar) {
+                    setAvatarPreview(data.photoURL || data.avatar);
+                }
+
+            } catch (error) {
+                console.error("Error fetching user settings:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUserData();
+    }, [user]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setAvatarFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!user) return;
+        setSaving(true);
+        try {
+            let photoURL = avatarPreview;
+            
+            // Upload new avatar if selected
+            if (avatarFile) {
+                const storageRef = ref(storage, `users/${user.uid}/avatar_${Date.now()}`);
+                await uploadBytes(storageRef, avatarFile);
+                photoURL = await getDownloadURL(storageRef);
+            }
+
+            const isCreator = user.role === 'creator';
+            const collectionName = isCreator ? 'creators' : 'users';
+            
+            // For creators, this might overlap with "Personal Identity" fields we set in Onboarding
+            const updateData = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phone: formData.phone,
+                location: formData.location,
+                country: formData.location, // redundancy
+                bio: formData.bio,
+                photoURL: photoURL,
+                updatedAt: serverTimestamp()
+            };
+
+            // If it's a new user doc (not creator), we ensure email is set
+            if (!isCreator) {
+                updateData.email = user.email;
+            }
+
+            await setDoc(doc(db, collectionName, user.uid), updateData, { merge: true });
+
+            addToast('Profile updated successfully', 'success');
+            setAvatarFile(null);
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            addToast('Failed to update profile', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return (
+         <div className="flex bg-background-light dark:bg-background-dark h-screen items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+         </div>
+    );
 
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -39,19 +159,32 @@ const ProfileSettingsPage = () => {
                     <section className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                         <div className="relative group">
                             <div 
-                                className="w-24 h-24 rounded-full bg-cover bg-center ring-4 ring-slate-50 dark:ring-slate-800"
-                                style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB2XbClk2r-PpSha3lWrcvYJrgc3eCUSSmfJ4TPH4W0cxXQkpIHie9VtDfQp1Pev39roiFj-slFUno18fTg-TTrNhRzVA_XaJHjDHvWTiyf-zrHqk28emmh-CzDFHOc-botfIeosl1ZUSpEbGVI61BWzaCVJ8qm8ORQ9U62ksMMQa_PMrPhBKezftZeoCWaz2P93KrF4B69b34nGEJlnPH2K0ZmBag77P54nmbfjjeuF5iypOMpw1_6eMx7CQwPVKUOGsKBwR_BGHlZ")' }}
-                            ></div>
-                            <button className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors" title="Change Avatar">
+                                className="w-24 h-24 rounded-full bg-cover bg-center ring-4 ring-slate-50 dark:ring-slate-800 flex items-center justify-center bg-slate-200 dark:bg-slate-800"
+                                style={{ backgroundImage: avatarPreview ? `url("${avatarPreview}")` : undefined }}
+                            >
+                                {!avatarPreview && <User size={32} className="text-slate-400" />}
+                            </div>
+                            <label className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-colors cursor-pointer" title="Change Avatar">
                                 <Camera size={16} />
-                            </button>
+                                <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                            </label>
                         </div>
                         <div className="space-y-1">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Profile Photo</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Recommended dimensions: 400x400px. JPG or PNG.</p>
                             <div className="flex gap-3 pt-2">
-                                <button className="text-sm font-semibold text-primary hover:text-primary/80">Upload New</button>
-                                <button className="text-sm font-semibold text-red-500 hover:text-red-600">Remove</button>
+                                <label className="text-sm font-semibold text-primary hover:text-primary/80 cursor-pointer">
+                                    Upload New
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                                </label>
+                                {avatarPreview && (
+                                    <button 
+                                        onClick={() => { setAvatarPreview(null); setAvatarFile(null); }}
+                                        className="text-sm font-semibold text-red-500 hover:text-red-600"
+                                    >
+                                        Remove
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -163,10 +296,15 @@ const ProfileSettingsPage = () => {
                             Cancel
                         </button>
                         <button 
-                            onClick={() => addToast("Profile updated successfully!", "success")}
-                            className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-all"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="px-6 py-2.5 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]"
                         >
-                            Save Changes
+                            {saving ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                "Save Changes"
+                            )}
                         </button>
                     </div>
     </div>

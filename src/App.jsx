@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence } from 'framer-motion';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -93,9 +94,11 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <ToastProvider>
-            <AnimatedRoutes />
-          </ToastProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AnimatedRoutes />
+            </ToastProvider>
+          </ThemeProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>

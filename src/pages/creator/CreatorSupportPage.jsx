@@ -1,11 +1,55 @@
 import React, { useState } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
 import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
-import { Mail, MessageCircle, FileQuestion } from 'lucide-react';
+import { Mail, MessageCircle, FileQuestion, Loader2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const CreatorSupportPage = () => {
+    const { user } = useAuth();
+    const { addToast } = useToast();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+
+    const [formData, setFormData] = useState({
+        subject: '',
+        message: ''
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (!formData.subject || !formData.message) {
+            addToast("Please fill in all fields", "error");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await addDoc(collection(db, "tickets"), {
+                userId: user.uid,
+                userEmail: user.email,
+                userName: user.name || user.displayName || 'Creator',
+                role: 'creator',
+                subject: formData.subject,
+                category: 'creator_support', // You might want a dropdown for creators too
+                message: formData.message,
+                status: 'open',
+                createdAt: serverTimestamp(),
+            });
+            
+            setFormData({ subject: '', message: '' });
+            addToast("Message sent successfully", "success");
+        } catch (error) {
+            console.error("Error submitting ticket:", error);
+            addToast("Failed to send message", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
@@ -53,13 +97,15 @@ const CreatorSupportPage = () => {
 
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
                             <h2 className="text-lg font-bold mb-6">Send us a message</h2>
-                            <form className="space-y-4 max-w-lg">
+                            <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
                                 <div>
                                     <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Subject</label>
                                     <input 
                                         type="text" 
                                         className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-primary/50"
                                         placeholder="How can we help?"
+                                        value={formData.subject}
+                                        onChange={(e) => setFormData({...formData, subject: e.target.value})}
                                     />
                                 </div>
                                 <div>
@@ -67,10 +113,16 @@ const CreatorSupportPage = () => {
                                     <textarea 
                                         className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-primary/50 h-32"
                                         placeholder="Describe your issue..."
+                                        value={formData.message}
+                                        onChange={(e) => setFormData({...formData, message: e.target.value})}
                                     ></textarea>
                                 </div>
-                                <button className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors">
-                                    Send Message
+                                <button 
+                                    disabled={isSubmitting}
+                                    className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {isSubmitting && <Loader2 size={18} className="animate-spin" />}
+                                    {isSubmitting ? 'Sending...' : 'Send Message'}
                                 </button>
                             </form>
                         </div>

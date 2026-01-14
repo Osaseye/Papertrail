@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { db, storage } from '../../lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Check, 
   ChevronRight, 
@@ -66,14 +69,16 @@ const NICHES = [
 const CreatorOnboardingPage = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
-  const { loginAsCreator } = useAuth();
+  const { user } = useAuth();
 
   // State for Step 1: Personal Profile
   const [profile, setProfile] = useState({
     fullName: '',
     dob: '',
     country: '',
-    phone: ''
+    phone: '',
+    avatar: null,
+    avatarPreview: null
   });
 
   // State for Step 2: Brand Identity
@@ -95,6 +100,17 @@ const CreatorOnboardingPage = () => {
 
   const handleProfileChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
+  };
+  
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfile({ ...profile, avatar: file, avatarPreview: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleBrandChange = (e) => {
@@ -152,11 +168,76 @@ const CreatorOnboardingPage = () => {
 
   // Effect to handle user upgrade
   React.useEffect(() => {
-    if (isComplete && !hasUpgraded.current) {
-      hasUpgraded.current = true;
-      loginAsCreator();
-    }
-  }, [isComplete, loginAsCreator]);
+    const submitOnboardingData = async () => {
+        if (isComplete && !hasUpgraded.current && user) {
+            hasUpgraded.current = true;
+            
+            try {
+                let profileAvatarUrl = null;
+                let brandAvatarUrl = null;
+
+                // 1. Upload Profile Avatar
+                if (profile.avatar) {
+                    const profileRef = ref(storage, `creator-profiles/${user.uid}/avatar`);
+                    await uploadBytes(profileRef, profile.avatar);
+                    profileAvatarUrl = await getDownloadURL(profileRef);
+                }
+
+                // 2. Upload Brand Avatar
+                if (brand.avatar) {
+                    const brandRef = ref(storage, `creator-brands/${user.uid}/avatar`);
+                    await uploadBytes(brandRef, brand.avatar);
+                    brandAvatarUrl = await getDownloadURL(brandRef);
+                }
+
+                // 3. Update Firestore
+                // A. Create/Update Public Brand Document
+                const brandRef = doc(db, 'creator-brands', user.uid);
+                await setDoc(brandRef, {
+                    brandName: brand.name, // Public Display Name key: brandName
+                    description: brand.description,
+                    niche: brand.niche,
+                    website: brand.website,
+                    avatar: brandAvatarUrl, 
+                    email: user.email,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    subscribers: 0,
+                    stats: {
+                        totalNewsletters: 0,
+                        totalOpens: 0
+                    }
+                });
+
+                // B. Update User Profile (or 'creators' collection for account details)
+                const creatorRef = doc(db, 'creators', user.uid);
+                await setDoc(creatorRef, {
+                    // Personal Identity
+                    fullName: profile.fullName,
+                    dob: profile.dob,
+                    country: profile.country,
+                    phone: profile.phone,
+                    personalPhoto: profileAvatarUrl, 
+                    
+                    // Subscription
+                    subscriptionPlan: selectedPlan,
+                    billingCycle: billingCycle,
+                    
+                    // System
+                    email: user.email,
+                    role: 'creator',
+                    isVerified: false,
+                    onboardingComplete: true,
+                    createdAt: serverTimestamp()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error saving onboarding data:", error);
+            }
+        }
+    };
+
+    submitOnboardingData();
+  }, [isComplete, user]);
 
   // Effect to handle progress animation
   React.useEffect(() => {
@@ -286,8 +367,8 @@ const CreatorOnboardingPage = () => {
       </header>
 
       {/* Main Content - Adaptive Layout */}
-      <main className="flex-1 w-full flex items-start pt-16 px-4 sm:px-6 pb-8">
-        <div className="w-full max-w-4xl mx-auto">
+      <main className="flex-1 w-full flex items-start pt-8 px-4 sm:px-6 pb-6">
+        <div className="w-full max-w-3xl mx-auto">
           
           <div className="text-center shrink-0 mb-8">
             <h1 className="text-2xl md:text-3xl font-bold mb-2 text-slate-900 dark:text-white">
@@ -319,6 +400,29 @@ const CreatorOnboardingPage = () => {
                 className="w-full max-w-lg mx-auto"
               >
                 <form onSubmit={handleNext} className="space-y-4">
+                  {/* Profile Picture Upload */}
+                  <div className="flex flex-col items-center mb-5">
+                    <div className="relative w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-primary transition-colors">
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleProfilePicChange}
+                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        />
+                        {profile.avatarPreview ? (
+                            <img src={profile.avatarPreview} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="flex flex-col items-center text-slate-400 group-hover:text-primary transition-colors">
+                                <User size={24} className="mb-1" />
+                            </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="text-white" size={20} />
+                        </div>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-2 font-medium">Upload Profile Picture</span>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5" htmlFor="fullName">Full Name</label>
                     <div className="relative">

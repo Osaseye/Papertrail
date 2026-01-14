@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
 import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
+import Modal from '../../components/ui/Modal';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where, Timestamp } from 'firebase/firestore';
 import {  
   Search, 
   Filter, 
@@ -11,27 +15,155 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
-  TrendingUp
+  TrendingUp,
+  UserX,
+  Loader2
 } from 'lucide-react';
-
-const MOCK_SUBSCRIBERS = [
-  { id: 1, name: 'Alice Johnson', email: 'alice@example.com', status: 'Active', joined: 'Oct 24, 2023', engagement: 'High' },
-  { id: 2, name: 'Bob Smith', email: 'bob.smith@company.com', status: 'Active', joined: 'Sep 12, 2023', engagement: 'Medium' },
-  { id: 3, name: 'Charlie Brown', email: 'charlie@test.com', status: 'Unsubscribed', joined: 'Aug 05, 2023', engagement: 'Low' },
-  { id: 4, name: 'Diana Prince', email: 'diana@themyscira.gov', status: 'Active', joined: 'Jan 10, 2024', engagement: 'High' },
-  { id: 5, name: 'Evan Wright', email: 'evan@writer.io', status: 'Bounced', joined: 'Dec 01, 2023', engagement: '-' },
-];
+import { useToast } from '../../context/ToastContext';
 
 const CreatorSubscribers = () => {
+  const { user } = useAuth();
+  const { addToast } = useToast();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [filter, setFilter] = useState('All');
+  
+  // Data States
+  const [subscribers, setSubscribers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Add Subscriber Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newSubscriberEmail, setNewSubscriberEmail] = useState('');
+  const [newSubscriberName, setNewSubscriberName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+
+  const fetchSubscribers = async () => {
+      if (!user) return;
+      try {
+          setLoading(true);
+          // Assuming a subcollection for simplified rule management per creator
+          const subRef = collection(db, 'creator-brands', user.uid, 'subscribers');
+          const q = query(subRef, orderBy('joinedAt', 'desc'));
+          const querySnapshot = await getDocs(q);
+          
+          const subs = [];
+          querySnapshot.forEach((doc) => {
+              subs.push({ id: doc.id, ...doc.data() });
+          });
+          setSubscribers(subs);
+      } catch (error) {
+          console.error("Error fetching subscribers:", error);
+          // addToast("Failed to load subscribers", "error");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  useEffect(() => {
+      fetchSubscribers();
+  }, [user]);
+
+  const handleAddSubscriber = async (e) => {
+      e.preventDefault();
+      if (!newSubscriberEmail) return;
+
+      try {
+          setIsAdding(true);
+          const subRef = collection(db, 'creator-brands', user.uid, 'subscribers');
+          
+          // Check if already exists (client-side check for now, rules should enforce uniqueness too)
+          // Ideally query firestore, but we can just add and let backend handle or check here.
+          // Simple check:
+          const exists = subscribers.find(s => s.email === newSubscriberEmail);
+          if (exists) {
+              addToast("Subscriber already exists", "error");
+              return;
+          }
+
+          await addDoc(subRef, {
+              email: newSubscriberEmail,
+              name: newSubscriberName || 'Unknown',
+              status: 'active',
+              joinedAt: serverTimestamp(),
+              engagement: { openRate: 0, clickRate: 0 }
+          });
+
+          addToast("Subscriber added successfully", "success");
+          setIsAddModalOpen(false);
+          setNewSubscriberEmail('');
+          setNewSubscriberName('');
+          fetchSubscribers(); // Refresh list
+
+      } catch (error) {
+          console.error("Error adding subscriber:", error);
+          addToast("Failed to add subscriber", "error");
+      } finally {
+          setIsAdding(false);
+      }
+  };
+
+  const filteredSubscribers = subscribers.filter(sub => {
+      const matchesFilter = filter === 'All' || sub.status.toLowerCase() === filter.toLowerCase();
+      const matchesSearch = sub.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            (sub.name && sub.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesFilter && matchesSearch;
+  });
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-200">
       <CreatorSidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
       
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add New Subscriber"
+        size="sm"
+      >
+        <form onSubmit={handleAddSubscriber} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
+                <input 
+                    type="email" 
+                    required
+                    value={newSubscriberEmail}
+                    onChange={(e) => setNewSubscriberEmail(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="subscriber@example.com"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name (Optional)</label>
+                <input 
+                    type="text" 
+                    value={newSubscriberName}
+                    onChange={(e) => setNewSubscriberName(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="John Doe"
+                />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+                <button 
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="submit"
+                    disabled={isAdding}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-blue-700 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                >
+                    {isAdding && <Loader2 className="animate-spin" size={16} />}
+                    Add Subscriber
+                </button>
+            </div>
+        </form>
+      </Modal>
+
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
         <header className="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-4 md:px-6 z-10 w-full">
@@ -40,7 +172,10 @@ const CreatorSubscribers = () => {
                 <button className="flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-slate-200 dark:border-slate-700">
                     <Download size={16} /> <span className="hidden md:inline">Export CSV</span>
                 </button>
-                <button className="bg-primary text-white px-3 md:px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2">
+                <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="bg-primary text-white px-3 md:px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-shadow shadow-sm flex items-center gap-2"
+                >
                     <User size={16} /> <span className="hidden md:inline">Add Subscriber</span>
                 </button>
             </div>
@@ -54,23 +189,27 @@ const CreatorSubscribers = () => {
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Total Subscribers</p>
                     <div className="flex items-end justify-between">
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">2,451</h2>
-                        <span className="text-green-500 text-sm font-semibold flex items-center gap-1"><TrendingUp size={14} /> +12%</span>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{subscribers.length}</h2>
+                        <span className="text-slate-400 text-sm font-semibold flex items-center gap-1">
+                            <TrendingUp size={14} className="text-green-500" /> +0%
+                        </span>
                     </div>
                 </div>
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Open Rate (Avg)</p>
                     <div className="flex items-end justify-between">
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">48.2%</h2>
-                        <span className="text-green-500 text-sm font-semibold flex items-center gap-1"><TrendingUp size={14} /> +2.4%</span>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">0%</h2>
+                        <span className="text-slate-400 text-sm font-semibold flex items-center gap-1">-</span>
                     </div>
                 </div>
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Active Subscribers</p>
                     <div className="flex items-end justify-between">
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">2,100</h2>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
+                            {subscribers.filter(s => s.status === 'active').length}
+                        </h2>
                         <div className="flex -space-x-2">
-                            {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-slate-200 ring-2 ring-white dark:ring-slate-900" />)}
+                            {/* Empty avatars */}
                         </div>
                     </div>
                 </div>
@@ -81,6 +220,8 @@ const CreatorSubscribers = () => {
                 <div className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none text-slate-900 dark:text-white" 
                         placeholder="Search by name or email..." 
                     />
@@ -106,108 +247,113 @@ const CreatorSubscribers = () => {
             </div>
 
             {/* Subscribers Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[800px]">
-                        <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                                <th className="px-6 py-4">Subscriber</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Date Joined</th>
-                                <th className="px-6 py-4">Engagement</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                            {MOCK_SUBSCRIBERS.map((sub) => (
-                                <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs ring-1 ring-slate-200 dark:ring-slate-700">
-                                                {sub.name.charAt(0)}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+                {loading ? (
+                    <div className="flex-1 flex items-center justify-center p-10">
+                        <Loader2 className="animate-spin text-primary" size={32} />
+                    </div>
+                ) : filteredSubscribers.length > 0 ? (
+                    <>
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[800px]">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                        <th className="px-6 py-4">Subscriber</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4">Date Joined</th>
+                                        <th className="px-6 py-4">Engagement</th>
+                                        <th className="px-6 py-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                    {filteredSubscribers.map((sub) => (
+                                        <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">
+                                                        {sub.name ? sub.name[0].toUpperCase() : sub.email[0].toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-slate-900 dark:text-white">{sub.name || 'Unknown'}</p>
+                                                        <p className="text-xs text-slate-500">{sub.email}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+                                                    sub.status === 'active' 
+                                                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' 
+                                                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                }`}>
+                                                    {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-500">
+                                                {sub.joinedAt?.seconds ? new Date(sub.joinedAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-4 text-xs text-slate-500">
+                                                    <span className="flex items-center gap-1"><Mail size={12} /> {sub.engagement?.openRate || 0}%</span>
+                                                    {/* <span className="flex items-center gap-1"><MousePointer2 size={12} /> {sub.engagement?.clickRate || 0}%</span> */}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                                    <MoreVertical size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                             {filteredSubscribers.map(sub => (
+                                 <div key={sub.id} className="p-4 space-y-3">
+                                     <div className="flex items-center justify-between">
+                                         <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold">
+                                                {sub.name ? sub.name[0].toUpperCase() : sub.email[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-slate-900 dark:text-white">{sub.name}</p>
-                                                <p className="text-slate-500 text-xs">{sub.email}</p>
+                                                <p className="font-semibold text-slate-900 dark:text-white">{sub.name || 'Unknown'}</p>
+                                                <p className="text-xs text-slate-500">{sub.email}</p>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                                            sub.status === 'Active' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30' :
-                                            sub.status === 'Unsubscribed' ? 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-400' :
-                                            'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400'
-                                        }`}>
-                                            {sub.status === 'Active' ? <CheckCircle2 size={12} /> : 
-                                             sub.status === 'Unsubscribed' ? <XCircle size={12} /> : null}
-                                            {sub.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={14} className="text-slate-400" />
-                                            {sub.joined}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`text-xs font-bold ${
-                                            sub.engagement === 'High' ? 'text-green-600' :
-                                            sub.engagement === 'Medium' ? 'text-amber-600' : 'text-slate-500'
-                                        }`}>
-                                            {sub.engagement}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
-                                            <MoreVertical size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                
-                {/* Mobile Card View (Visible only on small screens) */}
-                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
-                    {MOCK_SUBSCRIBERS.map((sub) => (
-                        <div key={sub.id} className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                                    {sub.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <p className="font-medium text-slate-900 dark:text-white text-sm">{sub.name}</p>
-                                    <p className="text-slate-500 text-xs">{sub.email}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                                            sub.status === 'Active' ? 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-400' :
-                                            sub.status === 'Unsubscribed' ? 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-400' :
-                                            'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400'
-                                        }`}>
-                                            {sub.status}
-                                        </span>
-                                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                            <Calendar size={10} /> {sub.joined}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button className="text-slate-400 p-2">
-                                <MoreVertical size={18} />
-                            </button>
+                                         </div>
+                                         <button className="p-2 text-slate-400">
+                                            <MoreVertical size={16} />
+                                         </button>
+                                     </div>
+                                 </div>
+                             ))}
                         </div>
-                    ))}
-                </div>
 
-                {/* Pagination (Mock) */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-sm text-slate-500">
-                    <span>Showing 1-5 of 2,451</span>
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-800">Prev</button>
-                        <button className="px-3 py-1 border border-slate-200 dark:border-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-800">Next</button>
+                         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-sm text-slate-500">
+                            <span>Showing {filteredSubscribers.length} of {subscribers.length}</span>
+                            <div className="flex gap-2">
+                                <button className="px-3 py-1 border border-slate-200 dark:border-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-800" disabled>Prev</button>
+                                <button className="px-3 py-1 border border-slate-200 dark:border-slate-800 rounded hover:bg-slate-50 dark:hover:bg-slate-800" disabled>Next</button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                        <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-full mb-4">
+                            <UserX className="size-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No subscribers yet</h3>
+                        <p className="text-slate-500 dark:text-slate-400 max-w-sm text-sm mb-6">
+                            You haven't added any subscribers yet. Share your profile or add them manually to get started.
+                        </p>
+                        <button 
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-colors"
+                        >
+                            Add First Subscriber
+                        </button>
                     </div>
-                </div>
+                )}
             </div>
 
         </main>

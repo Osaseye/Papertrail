@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
-import { Send, MessageSquare, AlertCircle, CheckCircle } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const SupportPage = () => {
+    const { user } = useAuth();
+    const { addToast } = useToast();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [formData, setFormData] = useState({
         subject: '',
@@ -13,14 +19,41 @@ const SupportPage = () => {
         priority: 'normal'
     });
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Simulate API call
-        // console.log('Support ticket submitted:', formData);
-        setIsSubmitted(true);
-        setTimeout(() => setIsSubmitted(false), 3000);
-        setFormData({ subject: '', category: 'general', message: '', priority: 'normal' });
+        
+        if (!user) {
+            addToast("You must be logged in to submit a ticket", "error");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            // Write to 'tickets' collection
+            await addDoc(collection(db, "tickets"), {
+                userId: user.uid,
+                userEmail: user.email,
+                userName: user.name || user.displayName || 'Unknown',
+                role: user.role || 'user',
+                subject: formData.subject,
+                category: formData.category,
+                priority: formData.priority,
+                message: formData.message,
+                status: 'open',
+                createdAt: serverTimestamp(),
+            });
+
+            setIsSubmitted(true);
+            setFormData({ subject: '', category: 'general', message: '', priority: 'normal' });
+            addToast("Ticket submitted successfully", "success");
+        } catch (error) {
+            console.error("Error submitting ticket:", error);
+            addToast("Failed to submit ticket. Please try again.", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleChange = (e) => {
@@ -127,10 +160,11 @@ const SupportPage = () => {
                                     <div className="flex justify-end pt-4">
                                         <button 
                                             type="submit"
-                                            className="bg-primary hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/40"
+                                            disabled={isSubmitting}
+                                            className="bg-primary hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/40 disabled:opacity-70 disabled:cursor-not-allowed"
                                         >
-                                            <Send size={18} />
-                                            Send Message
+                                            {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                                            {isSubmitting ? 'Sending...' : 'Send Message'}
                                         </button>
                                     </div>
                                 </form>

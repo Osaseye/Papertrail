@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import NotificationDropdown from '../../components/ui/NotificationDropdown';
+import { useAuth } from '../../context/AuthContext'; 
+import { db } from '../../lib/firebase';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, where, collectionGroup, updateDoc, increment } from 'firebase/firestore'; 
 import { 
   Search, 
   Bell, 
@@ -18,70 +21,24 @@ import {
   Bookmark,
   X,
   Check,
-  FileText, // Added
-  CheckCircle, // Added
+  FileText,
+  CheckCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Mock Data for Notifications
-const DUMMY_NOTIFICATIONS = [
-  { id: 1, title: "New Issue", message: "TechCrunch saved a new issue.", time: "2m ago", read: false, icon: <FileText size={14} /> },
-  { id: 2, title: "Subscription Active", message: "Your plan was renewed.", time: "1h ago", read: false, icon: <CheckCircle size={14} /> },
-  { id: 3, title: "Welcome!", message: "Thanks for joining Papertrail.", time: "1d ago", read: true, icon: <Mail size={14} /> },
-];
-
-// Mock Data for Feed Items
-const FEED_ITEMS = [
-  {
-    id: 1,
-    title: "Marcus Aurelius on Resilience and Mental Strength",
-    source: "The Daily Stoic",
-    time: "20m ago",
-    readTime: "5 min read",
-    excerpt: "In today's edition, we explore the Meditations and how to apply ancient wisdom to modern digital stressors. The key is in our perspective...",
-    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBpzL9GxLeAAUfR_YFySI8lvT46RPL7o2Oh_jR399Akvmzl4kf76oUvQ_QhY0dBeN9Wu_dJ9fKepB3RFj5khaZzyIO3Ygxc1-Ypy7moY1nsoO-88VjG4eMzRaA04D9Hs8gnyPitO0fAbUMpAaVse77i30Ry6OZy6OlAtZHIs-I8Fn7HXUjG6XyM5CoaIelG-2Nncbl4I_fUfyWIjBPpp0t-2JP5KwnUQDzDH2EUjRKjBv__VtxY5wIT4bFz4wkKU1ctT5_KLtOEStmy",
-    category: "Philosophy",
-    isNew: true,
-    isRead: false,
-    content: `
-      <p class="mb-4">It is a truth universally acknowledged that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.</p>
-      <h3 class="text-xl font-bold my-4">The Discipline of Perception</h3>
-      <p class="mb-4">"Choose not to be harmed and you won't feel harmed. Don't feel harmed and you haven't been."</p>
-      <p class="mb-4">This famous quote from Marcus Aurelius reminds us that our experience of the world is largely interpreted through our own lens. In the modern age, where digital notifications constantly demand our attention, this stoic principle is more relevant than ever.</p>
-    `
-  },
-  {
-    id: 2,
-    title: "SpaceX's New Launch & Apple's Surprise Announcement",
-    source: "TLDR Newsletter",
-    time: "4h ago",
-    readTime: "3 min read",
-    excerpt: "Catch up on the latest in tech, science, and coding. We've curated the top 5 stories you missed while you were sleeping...",
-    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAnidYvlsiefQpWZCYU9ub8yZGFItQiSW7lvEz_JD2z_BQnDwiu0RDrFkhhgg9mRq4J-uvr8_kdEad_SYd886EJ20VxmMzOVh3QME4dmL0aB1MkcPRtCxckpoSKt6TGY-r5cMGH2araP4SlJLHbwy-HH7UwM1XNDonO42X1BRDuGYPhW4vFKu2kIkPDNb-Z_ZoD0q9NbO4KAvyJzgXZ7DEmq1r8sAQoCl83R1h0YfCVzXnP9jlrVcvkjncXqJ4iWq74zMxrwZ9Txgmy",
-    category: "Tech",
-    isRead: true,
-    isNew: false,
-    content: "Content placeholder..."
-  },
-  {
-    id: 3,
-    title: "The problem with 'best'",
-    source: "Seth's Blog",
-    time: "6h ago",
-    readTime: "2 min read",
-    excerpt: "When we seek the best, we often ignore the context. What's best for a marathon runner isn't best for someone learning to walk...",
-    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFxYdpUqhITZLo5WoWjXZ5vRaKTeu0DFZ6WkijiO5b7Db7_T3IE5rlErW6rY_gLMi-wIRSNyXM-BaUkF8O42kO1OhonoEHFSx9EFd9AYr1rVNPKATKJ9Hvy2yRdpkNd0gNSQDCSZVKyC_FQwzcNH5kapUkpKAaZXPUFX_2Td0IVQMJSKNnMahjCG2xHN7yAgznkxD2SVDMidesLxsD98dkRLsiTpzHzIR4XIZ0MgJjeqE72hH9aJpbxWLB6pZH6c4HPR92yaspYMhJ",
-    category: "Marketing",
-    isNew: false,
-    isRead: false,
-    content: "Content placeholder..."
-  }
-];
+const DUMMY_NOTIFICATIONS = [];
 
 const UserDashboard = () => {
+  const { user } = useAuth();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'reading'
   
+  // Data States
+  const [feedItems, setFeedItems] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+
   // Notification State
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
@@ -93,6 +50,102 @@ const UserDashboard = () => {
   const [filterSource, setFilterSource] = useState(null);
   const [manageMode, setManageMode] = useState(false);
   const [showActivityMenu, setShowActivityMenu] = useState(false);
+
+  // Fetch Feed Items and Subscriptions
+  useEffect(() => {
+    const fetchData = async () => {
+        if (!user) return;
+
+        try {
+            // 1. Fetch Subscriptions using Collection Group Query
+            // This finds all 'subscribers' sub-collections across the DB where uid == user.uid
+            const subQuery = query(collectionGroup(db, 'subscribers'), where("uid", "==", user.uid));
+            const subSnapshot = await getDocs(subQuery);
+            
+            // Map subscriptions and extract creatorId from parent path
+            const subs = subSnapshot.docs.map(d => ({
+                id: d.id,
+                ...d.data(),
+                creatorId: d.ref.parent.parent.id // creator-brands/{id}/subscribers/{subId}
+            }));
+            setSubscriptions(subs);
+
+            // 2. Determine Post Query
+            let q;
+            const subscribedCreatorIds = subs.map(sub => sub.creatorId).filter(Boolean);
+            
+            // Initial Creator Cache from loaded subscriptions (if we had that data, but we might not)
+            const creatorCache = {};
+
+            if (subscribedCreatorIds.length > 0) {
+                 // Firestore 'in' limit is 10. Take top 10 for now.
+                 const topCreatorIds = subscribedCreatorIds.slice(0, 10);
+                 q = query(
+                    collection(db, 'newsletters'),
+                    where('creatorId', 'in', topCreatorIds),
+                    where('status', '==', 'sent'),
+                    orderBy('sentAt', 'desc'),
+                    limit(20)
+                );
+            } else {
+                 // Fallback to global feed if no subscriptions (showing latest sent newsletters)
+                 q = query(
+                    collection(db, 'newsletters'),
+                    where('status', '==', 'sent'),
+                    orderBy('sentAt', 'desc'),
+                    limit(20)
+                );
+            }
+            
+            // 3. Fetch Posts (Newsletters)
+            const querySnapshot = await getDocs(q);
+            const posts = [];
+
+            for (const docSnapshot of querySnapshot.docs) {
+                const postData = docSnapshot.data();
+                const creatorId = postData.creatorId;
+                
+                let creator = { brandName: 'Unknown Creator', avatar: null };
+                
+                if (creatorId) {
+                    if (creatorCache[creatorId]) {
+                        creator = creatorCache[creatorId];
+                    } else {
+                        try {
+                            const creatorDoc = await getDoc(doc(db, 'creator-brands', creatorId));
+                            if (creatorDoc.exists()) {
+                                creator = creatorDoc.data();
+                                creatorCache[creatorId] = creator;
+                            }
+                        } catch (e) {
+                            console.error("Error fetching creator", creatorId);
+                        }
+                    }
+                }
+                
+                // Map newsletter data to feed item format
+                posts.push({
+                    id: docSnapshot.id,
+                    ...postData,
+                    title: postData.subject, // Map subject to title
+                    source: creator.brandName || creator.name || 'Unknown Creator',
+                    avatar: creator.avatar,
+                    time: postData.sentAt?.toDate ? postData.sentAt.toDate().toLocaleDateString() : 'Recently',
+                    isRead: false, 
+                    excerpt: postData.previewText || (postData.content ? postData.content.substring(0, 100).replace(/<[^>]*>?/gm, '') + '...' : '')
+                });
+            }
+            
+            setFeedItems(posts);
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
+        } finally {
+            setLoadingFeed(false);
+        }
+    };
+    
+    fetchData();
+  }, [user]);
 
   // Notification Handlers
   const handleMarkRead = (id) => {
@@ -107,9 +160,22 @@ const UserDashboard = () => {
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
-  const handleRead = (item) => {
+  const handleRead = async (item) => {
     setReadingItem(item);
     setView('reading');
+
+    // Analytics: Track Open
+    if (item.id) {
+        try {
+            const newsletterRef = doc(db, 'newsletters', item.id);
+            // track open count
+            await updateDoc(newsletterRef, {
+                'stats.opens': increment(1)
+            });
+        } catch (error) {
+            console.error("Error tracking open:", error);
+        }
+    }
   };
 
   const handleBackToDash = () => {
@@ -138,13 +204,13 @@ const UserDashboard = () => {
   };
 
   // Filter Logic
-  const filteredItems = FEED_ITEMS.filter(item => {
+  const filteredItems = feedItems.filter(item => {
     if (filterMode === 'unread') return !item.isRead;
     if (filterMode === 'source') return item.source === filterSource;
     return true;
   });
 
-  const unreadCount = FEED_ITEMS.filter(i => !i.isRead).length;
+  const unreadCount = feedItems.filter(i => !i.isRead).length;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-300">
@@ -226,8 +292,8 @@ const UserDashboard = () => {
                                     <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Subscriptions</p>
                                     <Rss size={16} className="text-primary" />
                                 </div>
-                                <p className="text-2xl font-bold leading-tight relative z-10">24</p>
-                                <p className="text-green-600 text-[10px] font-bold relative z-10">+2 this month</p>
+                                <p className="text-2xl font-bold leading-tight relative z-10">{subscriptions.length}</p>
+                                <p className="text-slate-400 text-[10px] font-bold relative z-10">{subscriptions.length === 1 ? '1 Active Plan' : `${subscriptions.length} Active Plans`}</p>
                             </div>
 
                             <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-2 relative overflow-hidden group">
@@ -238,8 +304,8 @@ const UserDashboard = () => {
                                     <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Next</p>
                                     <Clock size={16} className="text-orange-500" />
                                 </div>
-                                <p className="text-2xl font-bold leading-tight relative z-10">2h 15m</p>
-                                <p className="text-slate-500 text-[10px] relative z-10">The Daily Stoic</p>
+                                <p className="text-2xl font-bold leading-tight relative z-10">--</p>
+                                <p className="text-slate-500 text-[10px] relative z-10">Nothing scheduled</p>
                             </div>
 
                             <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-2 relative overflow-hidden group">
@@ -250,12 +316,12 @@ const UserDashboard = () => {
                                     <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Unread</p>
                                     <Mail size={16} className="text-red-500" />
                                 </div>
-                                <p className="text-2xl font-bold leading-tight relative z-10">{unreadCount} New</p>
+                                <p className="text-2xl font-bold leading-tight relative z-10">0 New</p>
                                 <button 
                                     onClick={toggleUnreadFilter}
-                                    className="text-primary text-[10px] font-bold relative z-10 cursor-pointer hover:underline text-left"
+                                    className="text-slate-400 text-[10px] font-bold relative z-10 cursor-default text-left"
                                 >
-                                    {filterMode === 'unread' ? 'Show all' : 'View all unread'}
+                                    No new messages
                                 </button>
                             </div>
                         </div>
@@ -275,37 +341,34 @@ const UserDashboard = () => {
                                     </button>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    {[
-                                        { name: "Morning Brew", freq: "Daily", next: "Tomorrow, 8 AM", bg: "bg-blue-100 text-blue-700", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCkfHu8oqzlczJLaKAbuwmJML3AQCyMJpytrta927FqHiPsgVu8FgOpfXDAEA71mjA9n_wDsX1D8KPSE5-xhNb2V4-Ri0XS3dn-yhkcFumkCv1PzDjrdFaa9E7GQHEn3Uqp4DSvQdurjPpU7Zpnm3_qgTK8fFzsIh_61KjpaxINPNbYj782zXUZeg92I9WyI9UpdP1nl8zCUMFPuHV_pzbHm2N42XXgQ2UHzG4q3JM0_Q_m7vUvo2DW3Wydd-91ZyqStUh1ihI7Cn7o" },
-                                        { name: "The Pragmatic Engineer", freq: "Weekly", next: "Fri, 1 PM", bg: "bg-purple-100 text-purple-700", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAUXpYikRqKonC6uvHvJLNRB0_S0JMz-sCrUf2gbfzMebiQo9UovVtRfRmQmDqtNL_Qdmxwr-4CTZC9OesUbjwM4Te2rwWB3B5kG8CfLkSTLykvrltchh9oceO6Hb5fEldklEIC5vUs0P2wuzAUSMaBwKwAiqFvhWMA98mmGSyrFI5iBk-OCCyoZHe2lYD_1I3WdJCH49fV-gjgaUoBRqvpqzc_8hPvE-Nd3oVjfXS0HmzQ4b1W7YguL1drisRc1OsCfAreryoKU_Ku" },
-                                        { name: "The Daily Stoic", freq: "Daily", next: "2h 15m", bg: "bg-slate-100 text-slate-700", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBpzL9GxLeAAUfR_YFySI8lvT46RPL7o2Oh_jR399Akvmzl4kf76oUvQ_QhY0dBeN9Wu_dJ9fKepB3RFj5khaZzyIO3Ygxc1-Ypy7moY1nsoO-88VjG4eMzRaA04D9Hs8gnyPitO0fAbUMpAaVse77i30Ry6OZy6OlAtZHIs-I8Fn7HXUjG6XyM5CoaIelG-2Nncbl4I_fUfyWIjBPpp0t-2JP5KwnUQDzDH2EUjRKjBv__VtxY5wIT4bFz4wkKU1ctT5_KLtOEStmy" },
-                                        { name: "Creative Mornings", freq: "Monthly", next: "Oct 15th", bg: "bg-orange-100 text-orange-700", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuA47BjnhgstS2cjrD4BsL3wS_cqK1Xj0RQFJ3FC2RmWGvWaGSto83Jjh0dEcghSgewudfy0SOYFlPvCnhcBzeNTsWFzERXa6x0lDRQ9xC_FctAu-Ef-Sn40RsFfgEdZ5Fv1Urmy33WKRbnMu8qA8W7hBk4co8_XceEIONqlWSxXP_hzM4tvb6hUKah3KHc-ny7bL01Vbs3epPghgt1tDe4kyQ0AFYXQyA2zn5iKERKaAFj9RZXXjclYT-F7ysyWAxpXjYztUxRu_Bd1" }
-                                    ].map((trail, i) => (
-                                        <div 
-                                            key={i} 
-                                            onClick={() => handleSourceClick(trail.name)}
-                                            className={`bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center gap-3 hover:border-primary/50 transition-all cursor-pointer group ${filterSource === trail.name ? 'ring-2 ring-primary border-transparent' : ''}`}
-                                        >
-                                            <div 
-                                                className="bg-center bg-no-repeat aspect-square bg-cover rounded-md size-10 shrink-0 group-hover:scale-105 transition-transform" 
-                                                style={{ backgroundImage: `url("${trail.img}")` }}
-                                            ></div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-xs font-bold truncate text-slate-900 dark:text-white group-hover:text-primary transition-colors">{trail.name}</h4>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${trail.bg}`}>{trail.freq}</span>
-                                                    <p className="text-slate-500 text-[10px]">{trail.next}</p>
+                                    {subscriptions.length > 0 ? (
+                                        subscriptions.map(sub => (
+                                            <div key={sub.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-8 rounded-full bg-cover bg-center bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center" style={{ backgroundImage: sub.creatorAvatar ? `url("${sub.creatorAvatar}")` : undefined }}>
+                                                        {!sub.creatorAvatar && <User size={14} className="text-slate-400" />}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{sub.creatorName || 'Unknown'}</h4>
+                                                        <p className="text-[10px] text-slate-500">Weekly Newsletter</p>
+                                                    </div>
                                                 </div>
+                                                {manageMode ? (
+                                                     <button className="text-red-500 text-xs font-bold hover:underline">Unsub</button>
+                                                ) : (
+                                                     <button onClick={() => handleSourceClick(sub.creatorName)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-primary transition-colors">
+                                                        <ChevronRight size={16} />
+                                                     </button>
+                                                )}
                                             </div>
-                                            {manageMode ? (
-                                                <button className="text-red-500 hover:bg-red-50 p-1 rounded">
-                                                    <X size={14} />
-                                                </button>
-                                            ) : (
-                                                <ChevronRight className="text-slate-300 dark:text-slate-700 group-hover:text-primary transition-colors" size={16} />
-                                            )}
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                                            No active subscriptions found.
+                                            <br />
+                                            <a href="/explore" className="text-primary hover:underline mt-1 font-bold">Explore Newsletters</a>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
 
@@ -440,21 +503,9 @@ const UserDashboard = () => {
                              </div>
                         </div>
 
-                        {/* Article Content (Mock) */}
+                        {/* Article Content */}
                         <div className="prose dark:prose-invert max-w-none prose-slate prose-base">
                             <div dangerouslySetInnerHTML={{ __html: readingItem.content }} />
-                            <p>
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                            </p>
-                            <p>
-                                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-                            </p>
-                            <blockquote>
-                                "The only true wisdom is in knowing you know nothing." - Socrates
-                            </blockquote>
-                            <p>
-                                Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-                            </p>
                         </div>
 
                     </motion.div>

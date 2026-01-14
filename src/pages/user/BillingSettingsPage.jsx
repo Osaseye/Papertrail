@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { useToast } from '../../context/ToastContext';
-import { Check, Star, Zap, Shield, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, Star, Zap, Shield, HelpCircle, ChevronDown, ChevronUp, Construction } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 
 const BillingSettingsPage = () => {
     const { addToast } = useToast();
@@ -29,6 +30,7 @@ const BillingSettingsPage = () => {
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [openFaqIndex, setOpenFaqIndex] = useState(0);
+    const [showComingSoonModal, setShowComingSoonModal] = useState(false);
 
     const toggleFaq = (index) => {
         setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -36,6 +38,31 @@ const BillingSettingsPage = () => {
 
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+            <Modal
+                isOpen={showComingSoonModal}
+                onClose={() => setShowComingSoonModal(false)}
+                title="Coming Soon"
+                size="sm"
+            >
+                <div className="p-6 text-center space-y-4">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                        <Construction size={32} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Premium Plans Arriving Soon</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">
+                           We're currently finalizing our payment infrastructure. You'll be the first to know when subscriptions go live!
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => setShowComingSoonModal(false)}
+                        className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        Got it, thanks!
+                    </button>
+                </div>
+            </Modal>
+
             <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
             <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto p-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8 custom-scrollbar">
@@ -66,7 +93,7 @@ const BillingSettingsPage = () => {
                             <p className="text-slate-500 text-sm mt-2">Perfect for casual readers.</p>
                         </div>
                         <div className="mb-8">
-                            <span className="text-4xl font-black text-slate-900 dark:text-white">$0</span>
+                            <span className="text-4xl font-black text-slate-900 dark:text-white">₦0</span>
                             <span className="text-slate-500">/month</span>
                         </div>
                         <ul className="space-y-4 mb-8 flex-1">
@@ -98,7 +125,7 @@ const BillingSettingsPage = () => {
                             <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">For knowledge enthusiasts.</p>
                         </div>
                         <div className="mb-8">
-                            <span className="text-4xl font-black text-white dark:text-slate-900">$12</span>
+                            <span className="text-4xl font-black text-white dark:text-slate-900">₦5,000</span>
                             <span className="text-slate-400 dark:text-slate-500">/month</span>
                         </div>
                         <ul className="space-y-4 mb-8 flex-1">
@@ -116,7 +143,7 @@ const BillingSettingsPage = () => {
                             </li>
                         </ul>
                         <button 
-                            onClick={() => addToast("Successfully upgraded to Pro Plan! Welcome to the club.", "success")}
+                            onClick={() => setShowComingSoonModal(true)}
                             className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-blue-500/30"
                         >
                             Upgrade to Pro
@@ -130,7 +157,7 @@ const BillingSettingsPage = () => {
                             <p className="text-slate-500 text-sm mt-2">For research teams & pros.</p>
                         </div>
                         <div className="mb-8">
-                            <span className="text-4xl font-black text-slate-900 dark:text-white">$29</span>
+                            <span className="text-4xl font-black text-slate-900 dark:text-white">₦15,000</span>
                             <span className="text-slate-500">/month</span>
                         </div>
                         <ul className="space-y-4 mb-8 flex-1">
@@ -147,7 +174,10 @@ const BillingSettingsPage = () => {
                                 <Check size={18} className="text-primary shrink-0" /> Priority Support
                             </li>
                         </ul>
-                         <button className="w-full py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                        <button 
+                            onClick={() => setShowComingSoonModal(true)}
+                            className="w-full py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                        >
                             Contact Sales
                         </button>
                     </div>

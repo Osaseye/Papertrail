@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
 import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import Modal from '../../components/ui/Modal';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { 
   BarChart, 
   Bar, 
@@ -31,13 +34,13 @@ import {
 } from 'lucide-react';
 
 const chartData = [
-  { day: 'Mon', value: 2400 },
-  { day: 'Tue', value: 1398 },
-  { day: 'Wed', value: 9800 },
-  { day: 'Thu', value: 3908 },
-  { day: 'Fri', value: 4800 },
-  { day: 'Sat', value: 3800 },
-  { day: 'Sun', value: 4300 },
+  { day: 'Mon', value: 0 },
+  { day: 'Tue', value: 0 },
+  { day: 'Wed', value: 0 },
+  { day: 'Thu', value: 0 },
+  { day: 'Fri', value: 0 },
+  { day: 'Sat', value: 0 },
+  { day: 'Sun', value: 0 },
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -55,13 +58,93 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const CreatorDashboard = () => {
+  const { user } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
+
+  // Data States
+  const [stats, setStats] = useState({
+      totalSubscribers: 0,
+      monthlyGrowth: 0,
+      openRate: 0,
+      clickRate: 0,
+      lastSent: null
+  });
+  const [newsletters, setNewsletters] = useState([]);
+  const [brandName, setBrandName] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // Modal States
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [selectedNewsletter, setSelectedNewsletter] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+
+        // 1. Fetch Brand Details (Name & Aggregate Stats)
+        const brandRef = doc(db, 'creator-brands', user.uid);
+        const brandSnap = await getDoc(brandRef);
+        
+        if (brandSnap.exists()) {
+            const data = brandSnap.data();
+            setBrandName(data.brandName || user.displayName || 'Creator');
+            // Assuming stats might be stored on the brand document
+            if (data.stats) {
+                setStats(prev => ({ ...prev, ...data.stats }));
+            }
+        }
+
+        // 2. Fetch Newsletters (Recent 5)
+        const q = query(
+            collection(db, 'newsletters'),
+            where('creatorId', '==', user.uid),
+            orderBy('updatedAt', 'desc'), // Use updatedAt to match the list view sort
+            limit(10)
+        );
+        const querySnapshot = await getDocs(q);
+        const fetchedNewsletters = [];
+        querySnapshot.forEach((doc) => {
+            fetchedNewsletters.push({ id: doc.id, ...doc.data() });
+        });
+        setNewsletters(fetchedNewsletters);
+
+        // Calculate stats from ALL fetched newsletters (client-side aggregation simple for now)
+        if (fetchedNewsletters.length > 0) {
+            const sentNewsletters = fetchedNewsletters.filter(n => n.status === 'sent');
+            if (sentNewsletters.length > 0) {
+                 // Open Rate = (Opens / Subscribers) * 100 - But we don't have snapshot of subscribers at time of send.
+                 // For now, simpler metric: Total Opens
+                 const totalOpens = sentNewsletters.reduce((acc, curr) => acc + (curr.stats?.opens || 0), 0);
+                 const totalClicks = sentNewsletters.reduce((acc, curr) => acc + (curr.stats?.clicks || 0), 0);
+                 
+                 // Use raw opens as the 'metric' displayed for Open Rate if we don't have denominator
+                 // Or just display 0 if we can't calc rate properly yet
+                 
+                 const last = sentNewsletters[0];
+                 
+                 setStats(prev => ({
+                     ...prev,
+                     openRate: totalOpens, // Displaying Total Opens instead of Rate for now as it's more accurate without historical sub count
+                     clickRate: totalClicks,
+                     lastSent: last
+                 }));
+            }
+        }
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
 
   const handleOpenStats = (newsletter) => {
     setSelectedNewsletter(newsletter);
@@ -166,22 +249,9 @@ const CreatorDashboard = () => {
         size="md"
       >
          <div className="space-y-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="flex items-start space-x-4 pb-4 border-b border-slate-100 dark:border-slate-800/50 last:border-0 last:pb-0">
-                    <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${
-                        i % 2 === 0 ? 'bg-primary' : i % 3 === 0 ? 'bg-green-500' : 'bg-amber-500'
-                    }`}></div>
-                    <div>
-                        <p className="text-sm text-slate-900 dark:text-white font-medium">
-                            {i % 2 === 0 ? 'Draft auto-saved' : i % 3 === 0 ? 'New premium subscriber' : 'Issue with delivery'}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {i % 2 === 0 ? '"The Creator Economy" draft updated' : i % 3 === 0 ? 'Alex Chen joined the VIP tier' : '3 bounces detected in last blast'} 
-                            {' · '}{i * 4}h ago
-                        </p>
-                    </div>
-                </div>
-            ))}
+            <div className="text-center py-6 text-slate-400 text-sm">
+                No recent activity.
+            </div>
          </div>
       </Modal>
 
@@ -191,7 +261,7 @@ const CreatorDashboard = () => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back, Jordan</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome back, {brandName || 'Creator'}</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your Papertrail newsletter.</p>
                 </div>
                 <div className="mt-4 md:mt-0">
@@ -214,13 +284,13 @@ const CreatorDashboard = () => {
                         <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                             <Users className="text-primary" size={24} />
                         </div>
-                        <span className="text-green-500 text-xs font-semibold flex items-center bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
+                        <span className="text-slate-400 text-xs font-semibold flex items-center bg-slate-50 dark:bg-slate-900/20 px-2 py-1 rounded-full">
                             <TrendingUp size={14} className="mr-1" />
-                            +12.5%
+                            {stats.monthlyGrowth > 0 && '+'}{stats.monthlyGrowth}%
                         </span>
                     </div>
                     <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Subscribers</h3>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">24,512</p>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.totalSubscribers.toLocaleString()}</p>
                 </div>
 
                 {/* Growth Analytics */}
@@ -230,15 +300,15 @@ const CreatorDashboard = () => {
                             <BarChart2 className="text-indigo-600 dark:text-indigo-400" size={24} />
                         </div>
                         <div className="flex items-end space-x-1 h-6">
-                            <div className="w-1 bg-primary/20 rounded-full h-2"></div>
-                            <div className="w-1 bg-primary/40 rounded-full h-3"></div>
-                            <div className="w-1 bg-primary/60 rounded-full h-5"></div>
-                            <div className="w-1 bg-primary/80 rounded-full h-4"></div>
-                            <div className="w-1 bg-primary rounded-full h-6"></div>
+                            <div className="w-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2"></div>
+                            <div className="w-1 bg-slate-200 dark:bg-slate-700 rounded-full h-3"></div>
+                            <div className="w-1 bg-slate-200 dark:bg-slate-700 rounded-full h-5"></div>
+                            <div className="w-1 bg-slate-200 dark:bg-slate-700 rounded-full h-4"></div>
+                            <div className="w-1 bg-slate-200 dark:bg-slate-700 rounded-full h-6"></div>
                         </div>
                     </div>
-                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Growth Analytics</h3>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">1,402 <span className="text-sm font-normal text-slate-400">/mo</span></p>
+                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Opens</h3>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.openRate}</p>
                 </div>
 
                 {/* Last Sent */}
@@ -247,10 +317,16 @@ const CreatorDashboard = () => {
                         <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
                             <History className="text-amber-600 dark:text-amber-400" size={24} />
                         </div>
-                        <span className="text-slate-400 text-xs font-medium uppercase tracking-wider">Sent 2 days ago</span>
+                        <span className="text-slate-400 text-xs font-medium uppercase tracking-wider">
+                            {stats.lastSent ? new Date(stats.lastSent.sentAt?.seconds * 1000).toLocaleDateString() : '--'}
+                        </span>
                     </div>
-                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium truncate">The Future of AI Design</h3>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">42.8% <span className="text-sm font-normal text-slate-400">open</span></p>
+                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium truncate">
+                        {stats.lastSent ? stats.lastSent.subject : 'No newsletters sent'}
+                    </h3>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+                        {stats.lastSent ? `${stats.lastSent.stats?.opens || 0}` : '--'} <span className="text-sm font-normal text-slate-400">opens</span>
+                    </p>
                 </div>
 
                 {/* Upcoming Schedule */}
@@ -259,10 +335,10 @@ const CreatorDashboard = () => {
                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
                             <Calendar className="text-emerald-600 dark:text-emerald-400" size={24} />
                         </div>
-                        <span className="text-primary text-xs font-semibold cursor-pointer hover:underline">Edit schedule</span>
+                        <span className="text-slate-400 text-xs font-semibold cursor-default">No schedule</span>
                     </div>
-                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Weekly Round-up</h3>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">Oct 24 <span className="text-sm font-normal text-slate-400">9:00 AM</span></p>
+                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Next Newsletter</h3>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">-- <span className="text-sm font-normal text-slate-400">--</span></p>
                 </div>
             </div>
 
@@ -320,41 +396,10 @@ const CreatorDashboard = () => {
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Recent Activity</h2>
                     <div className="space-y-6">
-                        <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 mt-2 bg-green-500 rounded-full shrink-0 animate-pulse"></div>
-                            <div>
-                                <p className="text-sm text-slate-900 dark:text-white font-medium">New premium subscriber</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Alex Chen joined the VIP tier · 12m ago</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 mt-2 bg-primary rounded-full shrink-0"></div>
-                            <div>
-                                <p className="text-sm text-slate-900 dark:text-white font-medium">Draft auto-saved</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">"The Creator Economy" draft updated · 1h ago</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 mt-2 bg-amber-500 rounded-full shrink-0"></div>
-                            <div>
-                                <p className="text-sm text-slate-900 dark:text-white font-medium">Issue with delivery</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">3 bounces detected in last blast · 4h ago</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 mt-2 bg-slate-300 dark:bg-slate-600 rounded-full shrink-0"></div>
-                            <div>
-                                <p className="text-sm text-slate-900 dark:text-white font-medium">Archive updated</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Past issues synchronized with site · 1d ago</p>
-                            </div>
+                        <div className="text-center py-6 text-slate-400 text-xs">
+                             No recent activity.
                         </div>
                     </div>
-                    <button 
-                        onClick={() => setIsActivityModalOpen(true)}
-                        className="w-full mt-8 py-2.5 text-sm text-primary font-medium bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-xl transition-colors"
-                    >
-                        View all activity
-                    </button>
                 </div>
             </div>
 
@@ -376,79 +421,47 @@ const CreatorDashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-primary transition-colors">The Future of AI Design</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800">
-                                        Sent
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Oct 20, 2023</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">42.8%</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">12.1%</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                    <button 
-                                        onClick={() => handleOpenStats({
-                                            subject: "The Future of AI Design",
-                                            openRate: "42.8%",
-                                            ctr: "12.1%",
-                                            sentDate: "Oct 20, 2023"
-                                        })}
-                                        className="text-primary hover:text-blue-700 font-medium hover:underline"
-                                    >
-                                        View stats
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-primary transition-colors">Weekly Roundup: SaaS Trends</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800">
-                                        Sent
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Oct 13, 2023</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">39.5%</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">9.4%</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                    <button 
-                                         onClick={() => handleOpenStats({
-                                            subject: "Weekly Roundup: SaaS Trends",
-                                            openRate: "39.5%",
-                                            ctr: "9.4%",
-                                            sentDate: "Oct 13, 2023"
-                                        })}
-                                        className="text-primary hover:text-blue-700 font-medium hover:underline"
-                                    >
-                                        View stats
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-primary transition-colors">Why Email is King in 2024</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                        Draft
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">--</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">--</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-bold">--</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                    <button 
-                                        onClick={() => navigate('/creator/editor')}
-                                        className="text-primary hover:text-blue-700 font-medium hover:underline"
-                                    >
-                                        Edit draft
-                                    </button>
-                                </td>
-                            </tr>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500 text-sm">
+                                        Loading...
+                                    </td>
+                                </tr>
+                            ) : newsletters.length > 0 ? (
+                                newsletters.map((newsletter) => (
+                                    <tr key={newsletter.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                        <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{newsletter.subject}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                newsletter.status === 'sent' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                newsletter.status === 'draft' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400' :
+                                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                            }`}>
+                                                {newsletter.status.charAt(0).toUpperCase() + newsletter.status.slice(1)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                                            {newsletter.sentAt ? new Date(newsletter.sentAt.seconds * 1000).toLocaleDateString() : 'Not sent'}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{newsletter.stats?.openRate || 0}%</td>
+                                        <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{newsletter.stats?.clickRate || 0}%</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button 
+                                                onClick={() => handleOpenStats(newsletter)}
+                                                className="text-primary hover:text-blue-700 text-sm font-medium"
+                                            >
+                                                Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-10 text-center text-slate-500 text-sm">
+                                        No newsletters found. <span className="text-primary cursor-pointer hover:underline" onClick={() => navigate('/creator/editor')}>Create your first one</span>.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
