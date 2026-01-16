@@ -20,13 +20,19 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import Modal from '../../components/ui/Modal';
+
 const CreatorNewsletters = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
   const [newsletters, setNewsletters] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+
   const { user } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -36,48 +42,63 @@ const CreatorNewsletters = () => {
         if (!user) return;
         
         try {
+            // Simplified query to avoid Composite Index requirement
             const q = query(
                 collection(db, 'newsletters'), 
-                where('creatorId', '==', user.uid),
-                orderBy('updatedAt', 'desc')
+                where('creatorId', '==', user.uid)
             );
+            
             const querySnapshot = await getDocs(q);
             const items = querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
                     id: doc.id,
                     ...data,
-                    // Normalize status for UI Tabs
+                    // Normalize status
                     statusDisplay: data.status === 'sent' ? 'Published' : data.status === 'scheduled' ? 'Scheduled' : 'Draft',
-                    // Date formatting
-                    date: data.updatedAt?.seconds 
-                        ? new Date(data.updatedAt.seconds * 1000).toLocaleDateString() 
-                        : 'Just now',
                     // Stats mapping
                     openRate: data.stats?.openRate || 0,
-                    clicks: data.stats?.clicks || 0,
-                    sentCount: 0 
+                    clicks: data.stats?.clicks || 0, 
                 };
             });
+
+            // Sort Client-Side (Desc by UpdatedAt)
+            items.sort((a, b) => {
+                const dateA = a.updatedAt?.seconds || 0;
+                const dateB = b.updatedAt?.seconds || 0;
+                return dateB - dateA;
+            });
+
             setNewsletters(items);
         } catch (error) {
             console.error("Error fetching newsletters:", error);
+            addToast("Failed to fetch newsletters", "error");
         } finally {
             setLoading(false);
         }
     };
     
     fetchNewsletters();
-  }, [user]);
+  }, [user, addToast]);
 
-  const handleDelete = async (newsletterId) => {
-      if (window.confirm("Are you sure you want to delete this newsletter?")) {
-        try {
-            await deleteDoc(doc(db, 'newsletters', newsletterId));
-            setNewsletters(prev => prev.filter(n => n.id !== newsletterId));
-        } catch (error) {
-            console.error("Error deleting newsletter:", error);
-        }
+  const confirmDelete = (newsletterId) => {
+    setDeleteTargetId(newsletterId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+      if (!deleteTargetId) return;
+      
+      try {
+          await deleteDoc(doc(db, 'newsletters', deleteTargetId));
+          setNewsletters(prev => prev.filter(n => n.id !== deleteTargetId));
+          addToast("Newsletter deleted successfully.", "success");
+      } catch (error) {
+          console.error("Error deleting newsletter:", error);
+          addToast("Failed to delete. Please try again.", "error");
+      } finally {
+          setIsDeleteModalOpen(false);
+          setDeleteTargetId(null);
       }
   };
 
@@ -177,7 +198,7 @@ const CreatorNewsletters = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-centconfirm-2">
                                     {newsletter.status === 'draft' && (
                                         <>
                                             <button 
@@ -230,6 +251,30 @@ const CreatorNewsletters = () => {
 
         </main>
         <CreatorMobileBottomNav />
+
+        {/* Delete Confirmation Modal */}
+        <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Newsletter" size="sm">
+            <div className="space-y-4">
+                 <p className="text-slate-600 dark:text-slate-300">
+                    Are you sure you want to delete this newsletter? This action cannot be undone.
+                 </p>
+                 <div className="flex justify-end gap-2 pt-4">
+                     <button 
+                        onClick={() => setIsDeleteModalOpen(false)} 
+                        className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent"
+                     >
+                        Cancel
+                     </button>
+                     <button 
+                        onClick={handleDelete} 
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+                     >
+                        Delete Forever
+                     </button>
+                 </div>
+            </div>
+        </Modal>
+
       </div>
     </div>
   );

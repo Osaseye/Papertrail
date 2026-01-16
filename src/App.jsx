@@ -17,6 +17,7 @@ import OnboardingPage from './pages/user/OnboardingPage';
 import CreatorOnboardingPage from './pages/creator/CreatorOnboardingPage';
 import ExplorePage from './pages/public/ExplorePage';
 import CreatorProfilePage from './pages/public/CreatorProfilePage';
+import NewsletterViewer from './pages/public/NewsletterViewer';
 
 import NotFoundPage from './pages/public/NotFoundPage';
 
@@ -54,6 +55,7 @@ function AnimatedRoutes() {
         <Route path="/pricing" element={<PageTransition><PricingPage /></PageTransition>} />
         <Route path="/explore" element={<PageTransition><ExplorePage /></PageTransition>} />
         <Route path="/creator/:id" element={<PageTransition><CreatorProfilePage /></PageTransition>} />
+        <Route path="/read/:id" element={<PageTransition><NewsletterViewer /></PageTransition>} />
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
         <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />

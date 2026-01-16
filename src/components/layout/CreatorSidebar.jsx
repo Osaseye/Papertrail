@@ -19,16 +19,39 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'; 
-import { useTheme } from '../../context/ThemeContext'; 
+import { useTheme } from '../../context/ThemeContext';
+import { db } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  // Safe destructure in case useAuth is not fully ready or context is missing temporarily
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log("Logout clicked"));
   const user = auth?.user || { name: "Creator", email: "creator@papertrail.com" };
   const { theme, toggleTheme } = useTheme();
+
+  const [brandData, setBrandData] = useState({ name: user.name, avatar: user.photoURL || user.avatar });
+
+  // Fetch Brand Info instead of personal
+  useEffect(() => {
+    const fetchBrand = async () => {
+        if (!user?.id) return;
+        try {
+            const brandDoc = await getDoc(doc(db, 'creator-brands', user.id));
+            if (brandDoc.exists()) {
+                const data = brandDoc.data();
+                setBrandData({
+                    name: data.brandName || data.name || user.displayName,
+                    avatar: data.avatar || user.photoURL
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching creator brand:", error);
+        }
+    };
+    fetchBrand();
+  }, [user]);
 
   // State to track if the settings menu is expanded
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
@@ -201,20 +224,20 @@ const CreatorSidebar = ({ isCollapsed, toggleSidebar }) => {
       {/* Profile Section */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
         <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
-           {user.photoURL || user.avatar ? (
+           {brandData.avatar ? (
             <div 
              className="bg-center bg-no-repeat bg-cover rounded-full h-9 w-9 shrink-0 ring-2 ring-slate-100 dark:ring-slate-700" 
-             style={{ backgroundImage: `url("${user.photoURL || user.avatar}")` }}
+             style={{ backgroundImage: `url("${brandData.avatar}")` }}
             />
           ) : (
            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-            {user.name ? user.name.charAt(0) : 'C'}
+            {brandData.name ? brandData.name.charAt(0) : 'C'}
           </div>
           )}
           
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 overflow-hidden text-left">
-              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{user.name}</p>
+              <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{brandData.name}</p>
               <p className="text-slate-500 text-[10px] truncate">Creator Account</p>
             </div>
           )}

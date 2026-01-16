@@ -6,9 +6,10 @@ import {
   Ban
 } from 'lucide-react';
 import Sidebar from '../../components/layout/Sidebar';
+import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
 import { Link } from 'react-router-dom';
 
@@ -48,10 +49,20 @@ const SubscriptionManagementPage = () => {
             // Delete from user side
             await deleteDoc(doc(db, 'users', user.uid, 'subscriptions', subId));
             
-            // Note: Ideally we should use a Cloud Function to decrement the creator's subscriber count
-            // OR do a batched write here if we have permissions.
-            // For now, client-side deletion from user view is "functional" enough to stop receiving emails (if logic checks this list).
+            // Delete from creator side to keep sync
+            // The subId here IS the creatorId in the new system, but for legacy compatibility we use creatorId arg if passed, or fall back to subId
+            const targetCreatorId = creatorId || subId;
             
+            if (targetCreatorId) {
+                // Remove from creator's subscribers list
+                await deleteDoc(doc(db, 'creator-brands', targetCreatorId, 'subscribers', user.uid));
+                
+                // Decrement stats
+                await updateDoc(doc(db, 'creator-brands', targetCreatorId), {
+                    subscribers: increment(-1)
+                });
+            }
+
             addToast('Unsubscribed successfully', 'success');
         } catch (error) {
             console.error("Error unsubscribing", error);
@@ -71,9 +82,10 @@ const SubscriptionManagementPage = () => {
         }
     }
 
-    const filteredSubs = subscriptions.filter(sub => 
-        sub.creatorName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredSubs = subscriptions.filter(sub => {
+        const name = sub.brandName || sub.creatorName || '';
+        return name.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
@@ -122,28 +134,30 @@ const SubscriptionManagementPage = () => {
                                         <div key={sub.id} className="p-4 sm:p-6 flex items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                                    {sub.creatorAvatar ? (
-                                                        <img src={sub.creatorAvatar} alt={sub.creatorName} className="w-full h-full object-cover" />
+                                                    {(sub.avatar || sub.creatorAvatar) ? (
+                                                        <img src={sub.avatar || sub.creatorAvatar} alt={sub.brandName || sub.creatorName} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <span className="text-lg font-bold text-slate-500">{sub.creatorName?.[0]}</span>
+                                                        <span className="text-lg font-bold text-slate-500">{(sub.brandName || sub.creatorName || '?')[0]}</span>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-slate-900 dark:text-white">{sub.creatorName}</h3>
-                                                    <p className="text-sm text-slate-500">Subscribed on {sub.subscribedAt?.toDate().toLocaleDateString()}</p>
+                                                    <h3 className="font-bold text-slate-900 dark:text-white">{sub.brandName || sub.creatorName || 'Unknown Creator'}</h3>
+                                                    <p className="text-sm text-slate-500">Subscribed on {sub.subscribedAt?.toDate ? sub.subscribedAt.toDate().toLocaleDateString() : 'Unknown date'}</p>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-2">
                                                 <Link 
-                                                    to={`/creator/${sub.creatorId}`} 
+                                                    // In new system id = creatorId, but we fallback
+                                                    to={`/creator/${sub.creatorId || sub.id}`} 
                                                     className="p-2 text-slate-500 hover:text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                
                                                     title="Visit Profile"
                                                 >
                                                     <ExternalLink size={18} />
                                                 </Link>
                                                 <button 
-                                                    onClick={() => handleToggleMute(sub)}
+                                                    onClick={() => handleUnsubscribe(sub.id, sub.creatorId)}
                                                     className={`p-2 rounded-lg transition-colors ${sub.status === 'muted' ? 'text-orange-500 bg-orange-50' : 'text-slate-500 hover:text-orange-500 hover:bg-orange-50'}`}
                                                     title={sub.status === 'muted' ? "Unmute" : "Mute Notifications"}
                                                 >
@@ -165,6 +179,7 @@ const SubscriptionManagementPage = () => {
 
                     </div>
                 </main>
+                <MobileBottomNav />
             </div>
         </div>
     );

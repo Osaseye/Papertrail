@@ -52,36 +52,43 @@ const UserDashboard = () => {
   const [manageMode, setManageMode] = useState(false);
   const [showActivityMenu, setShowActivityMenu] = useState(false);
 
+  // Sync user name from Auth Context
+  useEffect(() => {
+    if (user?.displayName && user.displayName !== 'User') {
+      setUserName(user.displayName);
+    }
+  }, [user]);
+
   // Fetch Feed Items and Subscriptions
   useEffect(() => {
     const fetchData = async () => {
         if (!user) return;
 
         try {
-            // 0. Fetch User Profile Name (if not in Auth)
+            // 0. Fetch User Profile Name (if not in Auth/Context yet)
             if (!user.displayName || user.displayName === 'User') {
                  try {
                      const userDoc = await getDoc(doc(db, 'users', user.uid));
                      if (userDoc.exists()) {
                          const userData = userDoc.data();
-                         if (userData.firstName) setUserName(userData.firstName);
-                         else if (userData.fullName) setUserName(userData.fullName.split(' ')[0]);
+                         // Prioritize First Name, then Full Name
+                         const nameToUse = userData.firstName || (userData.fullName ? userData.fullName.split(' ')[0] : 'User');
+                         setUserName(nameToUse);
                      }
                  } catch (e) {
                      console.error("Error fetching user profile:", e);
                  }
             }
 
-            // 1. Fetch Subscriptions using Collection Group Query
-            // This finds all 'subscribers' sub-collections across the DB where uid == user.uid
-            const subQuery = query(collectionGroup(db, 'subscribers'), where("uid", "==", user.uid));
+            // 1. Fetch Subscriptions from User's Sub-collection
+            // We now store subscription metadata directly on the user object's subcollection for easier access
+            const subQuery = query(collection(db, 'users', user.uid, 'subscriptions'));
             const subSnapshot = await getDocs(subQuery);
             
-            // Map subscriptions and extract creatorId from parent path
             const subs = subSnapshot.docs.map(d => ({
-                id: d.id,
-                ...d.data(),
-                creatorId: d.ref.parent.parent.id // creator-brands/{id}/subscribers/{subId}
+                id: d.id, // Creator ID
+                ...d.data(), 
+                creatorId: d.id // It is the creator ID
             }));
             setSubscriptions(subs);
 
@@ -89,8 +96,15 @@ const UserDashboard = () => {
             let q;
             const subscribedCreatorIds = subs.map(sub => sub.creatorId).filter(Boolean);
             
-            // Initial Creator Cache from loaded subscriptions (if we had that data, but we might not)
+            // Build cache from subscription data directly (no need to fetch creator profiles again)
             const creatorCache = {};
+            subs.forEach(sub => {
+                creatorCache[sub.creatorId] = {
+                    brandName: sub.brandName,
+                    avatar: sub.avatar,
+                    niche: sub.niche
+                };
+            });
 
             if (subscribedCreatorIds.length > 0) {
                  // Firestore 'in' limit is 10. Take top 10 for now.
@@ -360,18 +374,18 @@ const UserDashboard = () => {
                                         subscriptions.map(sub => (
                                             <div key={sub.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="size-8 rounded-full bg-cover bg-center bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center" style={{ backgroundImage: sub.creatorAvatar ? `url("${sub.creatorAvatar}")` : undefined }}>
-                                                        {!sub.creatorAvatar && <User size={14} className="text-slate-400" />}
+                                                    <div className="size-8 rounded-full bg-cover bg-center bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center" style={{ backgroundImage: (sub.avatar || sub.creatorAvatar) ? `url("${sub.avatar || sub.creatorAvatar}")` : undefined }}>
+                                                        {!(sub.avatar || sub.creatorAvatar) && <User size={14} className="text-slate-400" />}
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{sub.creatorName || 'Unknown'}</h4>
-                                                        <p className="text-[10px] text-slate-500">Weekly Newsletter</p>
+                                                        <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{sub.brandName || sub.creatorName || 'Unknown'}</h4>
+                                                        <p className="text-[10px] text-slate-500">{sub.niche || 'Weekly Newsletter'}</p>
                                                     </div>
                                                 </div>
                                                 {manageMode ? (
                                                      <button className="text-red-500 text-xs font-bold hover:underline">Unsub</button>
                                                 ) : (
-                                                     <button onClick={() => handleSourceClick(sub.creatorName)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-primary transition-colors">
+                                                     <button onClick={() => handleSourceClick(sub.brandName || sub.creatorName)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-primary transition-colors">
                                                         <ChevronRight size={16} />
                                                      </button>
                                                 )}

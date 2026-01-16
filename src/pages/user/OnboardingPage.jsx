@@ -317,7 +317,7 @@ const OnboardingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           {/* Logo Only - Compact */}
           <div className="h-10 w-auto">
-              <img src="/logo.png" alt="Papertrail" className="h-full w-auto object-contain dark:invert" />
+              <img src="/logo.png" alt="Papertrail" className="h-full w-auto object-contain dark:hue-rotate-180 dark:invert-0" />
           </div>
 
           {/* Progress Bar - Compact & Top Right */}

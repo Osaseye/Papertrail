@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { 
-  doc, getDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp, orderBy, updateDoc, increment 
+  doc, getDoc, collection, query, where, getDocs, addDoc, setDoc, deleteDoc, serverTimestamp, orderBy, updateDoc, increment 
 } from 'firebase/firestore';
 import { 
   CheckCircle, Users, MapPin, Share2, Video, Camera, AtSign, 
@@ -61,15 +61,25 @@ const CreatorProfilePage = () => {
         
         // Check Subscription Status if user is logged in
         if (user) {
-            // Check in the creator's subscribers subcollection
-            const qSub = query(
-                collection(db, 'creator-brands', id, 'subscribers'),
-                where("uid", "==", user.uid)
-            );
-            const subSnapshot = await getDocs(qSub);
-            if (!subSnapshot.empty) {
+            // Check in the creator's subscribers subcollection using specific ID
+            // We use user.uid as the document ID to prevent duplicates
+            const subRef = doc(db, 'creator-brands', id, 'subscribers', user.uid);
+            const subSnap = await getDoc(subRef);
+            
+            if (subSnap.exists()) {
                 setIsSubscribed(true);
-                setSubscriptionId(subSnapshot.docs[0].id);
+                setSubscriptionId(subSnap.id);
+            } else {
+                // Fallback check for legacy random IDs (optional, but good for migration)
+                const qSub = query(
+                    collection(db, 'creator-brands', id, 'subscribers'),
+                    where("uid", "==", user.uid)
+                );
+                const querySnap = await getDocs(qSub);
+                if (!querySnap.empty) {
+                    setIsSubscribed(true);
+                    setSubscriptionId(querySnap.docs[0].id);
+                }
             }
         }
       } catch (error) {
@@ -91,26 +101,56 @@ const CreatorProfilePage = () => {
       
       setSubLoading(true);
       try {
+          const creatorSubRef = doc(db, 'creator-brands', id, 'subscribers', user.uid);
+          const userSubRef = doc(db, 'users', user.uid, 'subscriptions', id);
+          const brandRef = doc(db, 'creator-brands', id);
+
           if (isSubscribed) {
               // Unsubscribe
-              if (subscriptionId) {
+              await deleteDoc(creatorSubRef);
+              await deleteDoc(userSubRef);
+              
+              // Also clean up any legacy subscription if ID exists and is different
+              if (subscriptionId && subscriptionId !== user.uid) {
                   await deleteDoc(doc(db, 'creator-brands', id, 'subscribers', subscriptionId));
-                  setIsSubscribed(false);
-                  setSubscriptionId(null);
-                  addToast("Unsubscribed successfully.", "info");
               }
+
+              await updateDoc(brandRef, { subscribers: increment(-1) });
+              
+              setIsSubscribed(false);
+              setSubscriptionId(null);
+              // Update local state directly to reflect count change immediately
+              setCreatorData(prev => ({ ...prev, subscribers: Math.max(0, (prev.subscribers || 0) - 1) }));
+              
+              addToast("Unsubscribed successfully.", "info");
           } else {
               // Subscribe
-              const docRef = await addDoc(collection(db, 'creator-brands', id, 'subscribers'), {
+              const subData = {
                   uid: user.uid,
                   email: user.email,
                   name: user.displayName || 'User',
                   status: 'active',
                   joinedAt: serverTimestamp(),
                   source: 'platform_profile'
-              });
+              };
+
+              const userSideData = {
+                  creatorId: id,
+                  brandName: creatorData.brandName || creatorData.name || 'Creator',
+                  avatar: creatorData.avatar || null,
+                  niche: creatorData.niche || 'General',
+                  subscribedAt: serverTimestamp()
+              };
+
+              await setDoc(creatorSubRef, subData);
+              await setDoc(userSubRef, userSideData);
+              await updateDoc(brandRef, { subscribers: increment(1) });
+              
               setIsSubscribed(true);
-              setSubscriptionId(docRef.id);
+              setSubscriptionId(user.uid);
+              // Update local state
+              setCreatorData(prev => ({ ...prev, subscribers: (prev.subscribers || 0) + 1 }));
+
               addToast(`Subscribed to ${creatorData.brandName || creatorData.name || 'creator'}!`, "success");
           }
       } catch (error) {
@@ -201,9 +241,19 @@ const CreatorProfilePage = () => {
             {/* Cover Image */}
             <div 
                 className="relative w-full h-[250px] bg-cover bg-center" 
-                style={{ backgroundImage: creatorData.cover ? `url("${creatorData.cover}")` : undefined }}
+                style={{ 
+                    backgroundImage: creatorData.cover 
+                        ? `url("${creatorData.cover}")` 
+                        : (creatorData.avatar ? `url("${creatorData.avatar}")` : undefined)
+                }}
             >
-               {!creatorData.cover && <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600"></div>}
+               {!creatorData.cover && !creatorData.avatar && <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600"></div>}
+               
+               {/* Blur effect if using avatar as cover fallback */}
+               {!creatorData.cover && creatorData.avatar && (
+                   <div className="absolute inset-0 backdrop-blur-xl bg-black/30"></div>
+               )}
+               
                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             </div>
 

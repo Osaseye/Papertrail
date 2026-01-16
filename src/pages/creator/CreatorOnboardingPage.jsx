@@ -62,9 +62,11 @@ const COUNTRIES = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const NICHES = [
-    "Technology", "Finance", "Health", "Productivity", "Design", 
-    "Politics", "Science", "History", "Culture", "Sports", "Lifestyle", "Marketing"
-];
+    "Technology", "Finance", "Health", "Fitness", "Design", 
+    "Art", "Politics", "Science", "History", "Culture", "Sports", 
+    "Lifestyle", "Travel", "Business", "Education", "Food", 
+    "Gaming", "Music", "Photography", "Writing"
+].sort();
 
 const CreatorOnboardingPage = () => {
   const [step, setStep] = useState(1);
@@ -164,80 +166,101 @@ const CreatorOnboardingPage = () => {
   };
   
   const [progress, setProgress] = useState(0);
-  const hasUpgraded = React.useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Effect to handle user upgrade
-  React.useEffect(() => {
-    const submitOnboardingData = async () => {
-        if (isComplete && !hasUpgraded.current && user) {
-            hasUpgraded.current = true;
-            
-            try {
-                let profileAvatarUrl = null;
-                let brandAvatarUrl = null;
+  const handleFinishOnboarding = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    if (user) {
+        try {
+            let profileAvatarUrl = null;
+            let brandAvatarUrl = null;
 
-                // 1. Upload Profile Avatar
-                if (profile.avatar) {
-                    const profileRef = ref(storage, `creator-profiles/${user.uid}/avatar`);
-                    await uploadBytes(profileRef, profile.avatar);
-                    profileAvatarUrl = await getDownloadURL(profileRef);
-                }
-
-                // 2. Upload Brand Avatar
-                if (brand.avatar) {
-                    const brandRef = ref(storage, `creator-brands/${user.uid}/avatar`);
-                    await uploadBytes(brandRef, brand.avatar);
-                    brandAvatarUrl = await getDownloadURL(brandRef);
-                }
-
-                // 3. Update Firestore
-                // A. Create/Update Public Brand Document
-                const brandRef = doc(db, 'creator-brands', user.uid);
-                await setDoc(brandRef, {
-                    brandName: brand.name, // Public Display Name key: brandName
-                    description: brand.description,
-                    niche: brand.niche,
-                    website: brand.website,
-                    avatar: brandAvatarUrl, 
-                    email: user.email,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    subscribers: 0,
-                    stats: {
-                        totalNewsletters: 0,
-                        totalOpens: 0
-                    }
-                });
-
-                // B. Update User Profile (or 'creators' collection for account details)
-                const creatorRef = doc(db, 'creators', user.uid);
-                await setDoc(creatorRef, {
-                    // Personal Identity
-                    fullName: profile.fullName,
-                    dob: profile.dob,
-                    country: profile.country,
-                    phone: profile.phone,
-                    personalPhoto: profileAvatarUrl, 
-                    
-                    // Subscription
-                    subscriptionPlan: selectedPlan,
-                    billingCycle: billingCycle,
-                    
-                    // System
-                    email: user.email,
-                    role: 'creator',
-                    isVerified: false,
-                    onboardingComplete: true,
-                    createdAt: serverTimestamp()
-                }, { merge: true });
-            } catch (error) {
-                console.error("Error saving onboarding data:", error);
+            // 1. Upload Profile Avatar
+            if (profile.avatar) {
+                const profileRef = ref(storage, `creator-profiles/${user.uid}/avatar`);
+                await uploadBytes(profileRef, profile.avatar);
+                profileAvatarUrl = await getDownloadURL(profileRef);
             }
-        }
-    };
 
-    submitOnboardingData();
-  }, [isComplete, user]);
+            // 2. Upload Brand Avatar
+            if (brand.avatar) {
+                const brandRef = ref(storage, `creator-brands/${user.uid}/avatar`);
+                await uploadBytes(brandRef, brand.avatar);
+                brandAvatarUrl = await getDownloadURL(brandRef);
+            }
+
+            // 3. Update Firestore
+            // A. Create/Update Public Brand Document
+            const brandRef = doc(db, 'creator-brands', user.uid);
+            await setDoc(brandRef, {
+                brandName: brand.name, 
+                description: brand.description,
+                niche: brand.niche,
+                website: brand.website,
+                avatar: brandAvatarUrl, 
+                email: user.email,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                subscribers: 0,
+                stats: {
+                    totalNewsletters: 0,
+                    totalOpens: 0
+                }
+            });
+
+            // B. Update User Profile (or 'creators' collection for account details)
+            const creatorRef = doc(db, 'creators', user.uid);
+            await setDoc(creatorRef, {
+                // Personal Identity
+                fullName: profile.fullName,
+                dob: profile.dob,
+                country: profile.country,
+                phone: profile.phone,
+                personalPhoto: profileAvatarUrl, 
+                
+                // Subscription
+                subscriptionPlan: selectedPlan,
+                billingCycle: billingCycle,
+                
+                // System
+                email: user.email,
+                role: 'creator',
+                isVerified: false,
+                onboardingComplete: true,
+                createdAt: serverTimestamp()
+            }, { merge: true });
+            
+            // Only set complete after successful save
+            setIsComplete(true);
+        } catch (error) {
+            console.error("Error saving onboarding data:", error);
+            // Optionally handle error state here
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+  };
+
+  // Original Effect REMOVED (submitOnboardingData)
+  // New Effect to simply animate progress bar AFTER success
+  React.useEffect(() => {
+    if (isComplete) {
+      const timer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(timer);
+            navigate('/creator/dashboard');
+            return 100;
+          }
+          return prev + 1;
+        });
+      }, 30);
+      return () => clearInterval(timer);
+    }
+  }, [isComplete, navigate]);
+
 
   // Effect to handle progress animation
   React.useEffect(() => {
@@ -612,6 +635,21 @@ const CreatorOnboardingPage = () => {
                       </div>
                     </div>
 
+                    <div>
+                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5" htmlFor="website">Website <span className="text-slate-400 font-normal ml-1">(Optional)</span></label>
+                        <div className="relative">
+                            <input 
+                                type="url" 
+                                id="website" 
+                                name="website" 
+                                value={brand.website}
+                                onChange={handleBrandChange}
+                                placeholder="https://yourwebsite.com" 
+                                className="block w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm"
+                            />
+                        </div>
+                    </div>
+
                     <div className="pt-2 flex gap-3">
                          <button 
                             type="button" 
@@ -779,11 +817,12 @@ const CreatorOnboardingPage = () => {
                                 Back to Brand Setup
                             </button>
                              <button 
-                                onClick={handleNext} 
+                                onClick={handleFinishOnboarding} 
+                                disabled={isSubmitting}
                                 className="bg-primary hover:bg-blue-700 text-white px-8 py-2 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                Complete Setup
-                                <Check className="w-4 h-4" />
+                            > 
+                                {isSubmitting ? 'Finalizing Setup...' : 'Complete Setup'}
+                                {!isSubmitting && <ArrowRight size={16} />}
                             </button>
                         </div>
                     </div>

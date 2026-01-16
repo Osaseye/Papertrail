@@ -28,7 +28,7 @@ const ExplorePage = () => {
 
   const categories = [
     { id: "All", label: "All Categories", icon: null },
-    { id: "Tech", label: "Tech", icon: Monitor },
+    { id: "Technology", label: "Tech", icon: Monitor }, 
     { id: "Finance", label: "Finance", icon: DollarSign },
     { id: "Health", label: "Health", icon: Activity },
     { id: "Sports", label: "Sports", icon: Dumbbell },

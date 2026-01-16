@@ -6,6 +6,13 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '../../../context/ToastContext';
 
+const NICHES = [
+    "Technology", "Finance", "Health", "Fitness", "Design", 
+    "Art", "Politics", "Science", "History", "Culture", "Sports", 
+    "Lifestyle", "Travel", "Business", "Education", "Food", 
+    "Gaming", "Music", "Photography", "Writing"
+].sort();
+
 const CreatorProfile = () => {
     const { user } = useAuth();
     const { addToast } = useToast();
@@ -19,7 +26,7 @@ const CreatorProfile = () => {
     const [formData, setFormData] = useState({
         name: '', // Newsletter Name (Brand Name)
         bio: '', // Description
-        niche: 'Tech & Business',
+        niche: 'Technology',
         fullName: '', // Personal Name
         email: '',
         website: '',
@@ -42,7 +49,7 @@ const CreatorProfile = () => {
                     setFormData({
                         name: data.brandName || '',
                         bio: data.description || '', // mapped from description
-                        niche: data.niche || 'Tech & Business',
+                        niche: data.niche || 'Technology',
                         fullName: '', // Personal info might be elsewhere
                         email: data.email || user.email,
                         website: data.website || '',
@@ -181,12 +188,9 @@ const CreatorProfile = () => {
                             onChange={handleChange}
                             className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all appearance-none"
                         >
-                            <option>Tech & Business</option>
-                            <option>Health & Wellness</option>
-                            <option>Art & Design</option>
-                            <option>News & Politics</option>
-                            <option>Finance</option>
-                            <option>Productivity</option>
+                            {NICHES.map(n => (
+                                <option key={n} value={n}>{n}</option>
+                            ))}
                         </select>
                     </div>
 

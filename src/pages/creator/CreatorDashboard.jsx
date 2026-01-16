@@ -5,7 +5,7 @@ import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomN
 import Modal from '../../components/ui/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit, updateDoc } from 'firebase/firestore';
 import { 
   BarChart, 
   Bar, 
@@ -73,6 +73,17 @@ const CreatorDashboard = () => {
   const [newsletters, setNewsletters] = useState([]);
   const [brandName, setBrandName] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  // Chart State
+  const [chartData, setChartData] = useState([
+    { day: 'Mon', value: 0 },
+    { day: 'Tue', value: 0 },
+    { day: 'Wed', value: 0 },
+    { day: 'Thu', value: 0 },
+    { day: 'Fri', value: 0 },
+    { day: 'Sat', value: 0 },
+    { day: 'Sun', value: 0 },
+  ]);
 
   // Modal States
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
@@ -93,13 +104,80 @@ const CreatorDashboard = () => {
         if (brandSnap.exists()) {
             const data = brandSnap.data();
             setBrandName(data.brandName || user.displayName || 'Creator');
-            // Assuming stats might be stored on the brand document
-            if (data.stats) {
-                setStats(prev => ({ ...prev, ...data.stats }));
-            }
+            
+            // Map root level subscribers count to stats
+            setStats(prev => ({ 
+                ...prev, 
+                totalSubscribers: data.subscribers || 0,
+                // If deep stats exist, merge them, otherwise keep defaults
+                ...(data.stats || {}) 
+            }));
         }
 
-        // 2. Fetch Newsletters (Recent 5)
+        // 1b. Fetch Subscribers for Chart Data (Last 7 Days)
+        const subscribersRef = collection(db, 'creator-brands', user.uid, 'subscribers');
+        // Get all subscribers (or limit if list is huge, though for chart we need all to bucket them or run an aggregation query)
+        // Ideally we'd have a separate 'stats/daily_growth' collection, but for now we aggregate client side from the list
+        const subsSnapshot = await getDocs(subscribersRef);
+        
+        // Count actual subscribers from the collection
+        const actualSubscriberCount = subsSnapshot.size;
+        
+        // Correct the stats state immediately with the real count
+        setStats(prev => ({ 
+            ...prev, 
+            totalSubscribers: actualSubscriberCount
+        }));
+
+        // Self-heal: If Firestore doc has the wrong count (like -1), update it
+        if (brandSnap.exists()) {
+            const storedCount = brandSnap.data().subscribers;
+            if (storedCount !== actualSubscriberCount) {
+                 await updateDoc(brandRef, { subscribers: actualSubscriberCount });
+            }
+        }
+        
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const newChartData = days.map(d => ({ day: d, value: 0 }));
+        
+        // Helper to rotate array so today/current day matches the right-most or relevant position? 
+        // Or just show Mon-Sun fixed. Let's do Mon-Sun fixed for simplicity
+        const fixedChartData = [
+            { day: 'Mon', value: 0 },
+            { day: 'Tue', value: 0 },
+            { day: 'Wed', value: 0 },
+            { day: 'Thu', value: 0 },
+            { day: 'Fri', value: 0 },
+            { day: 'Sat', value: 0 },
+            { day: 'Sun', value: 0 },
+        ];
+
+        subsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.joinedAt) {
+                const date = data.joinedAt.toDate ? data.joinedAt.toDate() : new Date(data.joinedAt);
+                // Check if joined in the last 7 days? Or just map by day of week generally?
+                // Usually "Growth" implies recent. Let's filter for this week?
+                // Actually user request is "chart is still showing 0 for today".
+                
+                // Let's just map all subscribers to their day of week for a "Distribution" view, 
+                // OR calculate NEW subscribers per day for the last 7 days.
+                
+                // Strategy: Last 7 Days Rolling Window
+                // Logic: Iterate days, check if joinedAt is same day.
+                const dayIndex = date.getDay(); // 0 = Sun, 1 = Mon...
+                const dayName = days[dayIndex];
+                
+                // Find matching day in chart data and increment
+                const chartItem = fixedChartData.find(d => d.day === dayName);
+                if (chartItem) {
+                    chartItem.value += 1;
+                }
+            }
+        });
+        setChartData(fixedChartData);
+
+        // 2. Fetch Newsletters (Recent 5) (Rest of code...)
         const q = query(
             collection(db, 'newsletters'),
             where('creatorId', '==', user.uid),

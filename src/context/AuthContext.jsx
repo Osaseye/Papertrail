@@ -28,17 +28,33 @@ export const AuthProvider = ({ children }) => {
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
-            setUser({ ...userDoc.data(), id: currentUser.uid, role: 'user' });
+            const data = userDoc.data();
+            setUser({ 
+                ...data, 
+                id: currentUser.uid, 
+                role: 'user',
+                displayName: data.firstName || data.fullName || data.name || currentUser.displayName 
+            });
           } else {
             // Check if user is in 'creators' collection
             const creatorDocRef = doc(db, 'creators', currentUser.uid);
             const creatorDoc = await getDoc(creatorDocRef);
             
             if (creatorDoc.exists()) {
-              setUser({ ...creatorDoc.data(), id: currentUser.uid, role: 'creator' });
+              const data = creatorDoc.data();
+              setUser({ 
+                ...data, 
+                id: currentUser.uid, 
+                role: 'creator',
+                displayName: data.fullName || data.name || currentUser.displayName
+              });
             } else {
               // Fallback
-              setUser({ id: currentUser.uid, email: currentUser.email });
+              setUser({ 
+                id: currentUser.uid, 
+                email: currentUser.email,
+                displayName: currentUser.displayName
+              });
             }
           }
         } catch (error) {
@@ -140,6 +156,7 @@ export const AuthProvider = ({ children }) => {
       await signOut(auth);
       setUser(null);
       localStorage.removeItem('papertrail_user');
+      localStorage.removeItem('color-theme');
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -154,4 +171,20 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === null) {
+    // Return a dummy context to prevent crashes during initial render or if misused
+    // But log a warning for development
+    console.warn("useAuth was used outside of AuthProvider. This might be a transient state.");
+    return {
+      user: null,
+      loading: true, 
+      signIn: async () => ({ success: false, error: "Auth provider missing" }),
+      signUp: async () => ({ success: false, error: "Auth provider missing" }), 
+      loginWithGoogle: async () => ({ success: false, error: "Auth provider missing" }),
+      logout: async () => {},
+    };
+  }
+  return context;
+};

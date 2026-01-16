@@ -5,6 +5,25 @@ service firebase.storage {
        allow read: if true;
        allow write: if request.auth != null && request.auth.uid == userId;
     }
+    
+    // Creator Profiles (Personal)
+    match /creator-profiles/{userId}/{allPaths=**} {
+       allow read: if true;
+       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Creator Brands (Public)
+    match /creator-brands/{userId}/{allPaths=**} {
+       allow read: if true;
+       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Creator Content (Newsletters/Posts)
+    match /creator-content/{userId}/{allPaths=**} {
+       allow read: if true;
+       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

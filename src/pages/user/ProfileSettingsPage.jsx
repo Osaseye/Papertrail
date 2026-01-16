@@ -3,14 +3,16 @@ import Sidebar from '../../components/layout/Sidebar';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { db, storage } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Camera, User, Mail, Phone, MapPin, Globe, Loader2 } from 'lucide-react';
+import { Camera, User, Mail, Phone, MapPin, Globe, Loader2, Calendar } from 'lucide-react';
 
 const ProfileSettingsPage = () => {
     const { addToast } = useToast();
     const { user } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -25,7 +27,8 @@ const ProfileSettingsPage = () => {
         email: '',
         phone: '',
         location: '',
-        bio: ''
+        bio: '',
+        dob: ''
     });
 
     // Fetch existing data
@@ -35,12 +38,6 @@ const ProfileSettingsPage = () => {
             try {
                 // Determine collection based on role (standard user vs creator)
                 const isCreator = user.role === 'creator'; 
-                // Note: AuthContext attaches 'role' to user object. 
-                // However, we want to update the profile document. 
-                // If the user is a creator, they should probably edit this in "CreatorSettings", 
-                // but if they are here, we should probably update their 'personal' info.
-                // For simplicity, let's assume this page is primarily for 'users' collection updates
-                // UNLESS they are a creator, then we update 'creators' collection (personal info part).
                 
                 const collectionName = isCreator ? 'creators' : 'users';
                 const docRef = doc(db, collectionName, user.uid);
@@ -57,7 +54,8 @@ const ProfileSettingsPage = () => {
                     email: user.email,
                     phone: data.phone || '',
                     location: data.location || data.country || '',
-                    bio: data.bio || ''
+                    bio: data.bio || '',
+                    dob: data.dob || ''
                 });
 
                 if (data.photoURL || data.avatar) {
@@ -113,6 +111,7 @@ const ProfileSettingsPage = () => {
                 location: formData.location,
                 country: formData.location, // redundancy
                 bio: formData.bio,
+                dob: formData.dob,
                 photoURL: photoURL,
                 updatedAt: serverTimestamp()
             };
@@ -233,6 +232,19 @@ const ProfileSettingsPage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Calendar size={16} className="text-slate-400" /> Date of Birth
+                            </label>
+                            <input 
+                                type="date" 
+                                name="dob"
+                                value={formData.dob}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Phone size={16} className="text-slate-400" /> Phone Number
                             </label>
                             <input 
@@ -282,10 +294,10 @@ const ProfileSettingsPage = () => {
                                 <p className="text-sm text-slate-500 dark:text-slate-400">Toggle the application theme between light and dark mode.</p>
                             </div>
                             <button 
-                                onClick={() => document.documentElement.classList.toggle('dark')}
-                                className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:ring-offset-slate-900"
+                                onClick={toggleTheme}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:ring-offset-slate-900 ${theme === 'dark' ? 'bg-primary' : 'bg-slate-200'}`}
                             >
-                                <span className="translate-x-1 dark:translate-x-6 inline-block h-4 w-4 transform rounded-full bg-white transition-transform" />
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
                     </section>

@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getAI, getGenerativeModel, VertexAIBackend } from "firebase/ai";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,3 +18,13 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Initialize Vertex AI
+const ai = getAI(app, { backend: new VertexAIBackend() });
+export const aiModel = getGenerativeModel(ai, { 
+  model: "gemini-2.5-flash",
+  generationConfig: {
+    maxOutputTokens: 2000,
+    temperature: 0.7,
+  } 
+});

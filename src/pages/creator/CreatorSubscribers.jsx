@@ -4,7 +4,7 @@ import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomN
 import Modal from '../../components/ui/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, where, Timestamp, deleteDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import {  
   Search, 
   Filter, 
@@ -17,7 +17,8 @@ import {
   XCircle,
   TrendingUp,
   UserX,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
@@ -37,6 +38,11 @@ const CreatorSubscribers = () => {
   const [newSubscriberEmail, setNewSubscriberEmail] = useState('');
   const [newSubscriberName, setNewSubscriberName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
+  // Delete Confirmation Modal State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [subscriberToDelete, setSubscriberToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
@@ -105,6 +111,50 @@ const CreatorSubscribers = () => {
       }
   };
 
+  const handleOpenDeleteModal = (sub) => {
+      setSubscriberToDelete(sub);
+      setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+      if (!subscriberToDelete) return;
+
+      try {
+          setIsDeleting(true);
+          const { id: subscriberId, uid: subscriberUid } = subscriberToDelete;
+
+          // 1. Remove from Creator's Subscriber List
+          await deleteDoc(doc(db, 'creator-brands', user.uid, 'subscribers', subscriberId));
+
+          // 2. Decrement Count - Calculate exact count instead of relying on increment(-1) to fix potential sync issues
+          // Since we just deleted one, the new count is current list length - 1
+          const newCount = Math.max(0, subscribers.length - 1);
+          await updateDoc(doc(db, 'creator-brands', user.uid), {
+              subscribers: newCount 
+          });
+
+          // 3. (Optional cleanliness) Remove from User's side
+          if (subscriberUid) {
+               try {
+                  await deleteDoc(doc(db, 'users', subscriberUid, 'subscriptions', user.uid));
+               } catch (err) {
+                   console.warn("Could not remove from user's list (permission?)", err);
+               }
+          }
+
+          addToast("Subscriber removed", "success");
+          setIsDeleteModalOpen(false);
+          setSubscriberToDelete(null);
+          // Refresh full list to update UI
+          fetchSubscribers(); 
+      } catch (error) {
+          console.error("Error deleting subscriber:", error);
+          addToast("Failed to delete subscriber", "error");
+      } finally {
+          setIsDeleting(false);
+      }
+  };
+
   const filteredSubscribers = subscribers.filter(sub => {
       const matchesFilter = filter === 'All' || sub.status.toLowerCase() === filter.toLowerCase();
       const matchesSearch = sub.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -162,6 +212,39 @@ const CreatorSubscribers = () => {
                 </button>
             </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Remove Subscriber"
+        size="sm"
+      >
+        <div className="space-y-4">
+            <p className="text-slate-600 dark:text-slate-300">
+                Are you sure you want to remove <span className="font-bold">{subscriberToDelete?.email}</span>? 
+                They will no longer receive your newsletters. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+                <button 
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    disabled={isDeleting}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                >
+                    {isDeleting && <Loader2 className="animate-spin" size={16} />}
+                    Remove
+                </button>
+            </div>
+        </div>
       </Modal>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
@@ -298,8 +381,12 @@ const CreatorSubscribers = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                                                    <MoreVertical size={16} />
+                                                <button 
+                                                    onClick={() => handleOpenDeleteModal(sub)}
+                                                    className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                                                    title="Remove Subscriber"
+                                                >
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -321,8 +408,11 @@ const CreatorSubscribers = () => {
                                                 <p className="text-xs text-slate-500">{sub.email}</p>
                                             </div>
                                          </div>
-                                         <button className="p-2 text-slate-400">
-                                            <MoreVertical size={16} />
+                                         <button 
+                                            onClick={() => handleOpenDeleteModal(sub)}
+                                            className="p-2 text-slate-400 hover:text-red-500"
+                                         >
+                                            <Trash2 size={16} />
                                          </button>
                                      </div>
                                  </div>
