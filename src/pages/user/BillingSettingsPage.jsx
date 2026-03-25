@@ -4,6 +4,7 @@ import MobileBottomNav from '../../components/layout/MobileBottomNav';
 import { useToast } from '../../context/ToastContext';
 import { Check, Star, Zap, Shield, HelpCircle, ChevronDown, ChevronUp, Construction } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import PaymentModal from '../../components/ui/PaymentModal';
 
 const BillingSettingsPage = () => {
     const { addToast } = useToast();
@@ -30,38 +31,30 @@ const BillingSettingsPage = () => {
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [openFaqIndex, setOpenFaqIndex] = useState(0);
-    const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     const toggleFaq = (index) => {
         setOpenFaqIndex(openFaqIndex === index ? null : index);
     }
 
+    const handleUpgrade = () => {
+        setShowPaymentModal(true);
+    };
+
+    const handlePaymentSuccess = () => {
+        setShowPaymentModal(false);
+        addToast("Successfully upgraded to Pro Plan!", "success");
+    };
+
     return (
         <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
-            <Modal
-                isOpen={showComingSoonModal}
-                onClose={() => setShowComingSoonModal(false)}
-                title="Coming Soon"
-                size="sm"
-            >
-                <div className="p-6 text-center space-y-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-                        <Construction size={32} />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Premium Plans Arriving Soon</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">
-                           We're currently finalizing our payment infrastructure. You'll be the first to know when subscriptions go live!
-                        </p>
-                    </div>
-                    <button 
-                        onClick={() => setShowComingSoonModal(false)}
-                        className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    >
-                        Got it, thanks!
-                    </button>
-                </div>
-            </Modal>
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onConfirm={handlePaymentSuccess}
+                creatorName="Papertrail Pro"
+                price="5000"
+            />
 
             <Sidebar isCollapsed={!isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
             <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
@@ -143,7 +136,7 @@ const BillingSettingsPage = () => {
                             </li>
                         </ul>
                         <button 
-                            onClick={() => setShowComingSoonModal(true)}
+                            onClick={handleUpgrade}
                             className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-blue-500/30"
                         >
                             Upgrade to Pro

@@ -1,4 +1,4 @@
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
 
@@ -6,10 +6,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Initialize SendGrid
-// Ensure you set this in your Firebase config or environment: 
-// firebase functions:config:set sendgrid.key="YOUR_API_KEY"
-// OR use a .env file locally.
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || functions.config().sendgrid?.key;
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY);
 } else {
@@ -17,15 +14,15 @@ if (SENDGRID_API_KEY) {
 }
 
 // TODO: Update this to your PRODUCTION domain when deploying
-// const BASE_URL = "https://papertrail.app"; 
-const BASE_URL = "http://localhost:5173"; 
+const BASE_URL = "https://papertrail-news.vercel.app"; 
+// const BASE_URL = "http://localhost:5173"; 
 
 /**
  * Trigger: When a newsletter document is written.
  * Only triggers if status changes to 'sent'.
  * Respects user delivery preferences (Instant only).
  */
-exports.sendNewsletter = functions.firestore
+exports.sendNewsletter = functions.region('europe-west1').firestore
   .document("newsletters/{newsletterId}")
   .onWrite(async (change, context) => {
     const newData = change.after.exists ? change.after.data() : null;
@@ -138,7 +135,7 @@ exports.sendNewsletter = functions.firestore
         // 5. Send via SendGrid
         const msg = {
           to: recipients, 
-          from: 'updates@papertrail.app', // Validate this sender in SendGrid!
+          from: { email: 'papertrail.notifications@gmail.com', name: 'Papertrail' }, 
           subject: `${brandName}: ${subject}`,
           html: htmlEmail,
           isMultiple: true // VERY IMPORTANT: Hides other recipients

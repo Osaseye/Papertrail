@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import MobileBottomNav from '../../components/layout/MobileBottomNav';
 
+import PaymentModal from '../../components/ui/PaymentModal';
+
 const CreatorProfilePage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -22,6 +24,7 @@ const CreatorProfilePage = () => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   const [creatorData, setCreatorData] = useState(null);
   const [postsData, setPostsData] = useState([]);
@@ -98,7 +101,17 @@ const CreatorProfilePage = () => {
           navigate('/login');
           return;
       }
-      
+
+      if (isSubscribed) {
+          // Unsubscribe directly
+          await confirmSubscription();
+      } else {
+          // Open payment modal
+          setShowPaymentModal(true);
+      }
+  };
+
+  const confirmSubscription = async () => {
       setSubLoading(true);
       try {
           const creatorSubRef = doc(db, 'creator-brands', id, 'subscribers', user.uid);
@@ -159,6 +172,11 @@ const CreatorProfilePage = () => {
       } finally {
           setSubLoading(false);
       }
+  };
+
+  const handlePaymentSuccess = () => {
+      setShowPaymentModal(false);
+      confirmSubscription();
   };
 
   if (loading) {
@@ -300,6 +318,14 @@ const CreatorProfilePage = () => {
                     </div>
                 </div>
             </div>
+
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onConfirm={handlePaymentSuccess}
+                creatorName={creatorData.brandName || creatorData.name || 'Creator'}
+                price="5.00" 
+            />
 
             {/* Grid Content */}
             <div className="max-w-5xl mx-auto px-4 md:px-8 mt-8">

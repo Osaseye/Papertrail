@@ -18,6 +18,7 @@ import CreatorOnboardingPage from './pages/creator/CreatorOnboardingPage';
 import ExplorePage from './pages/public/ExplorePage';
 import CreatorProfilePage from './pages/public/CreatorProfilePage';
 import NewsletterViewer from './pages/public/NewsletterViewer';
+import SeedPage from './pages/public/SeedPage';
 
 import NotFoundPage from './pages/public/NotFoundPage';
 
@@ -61,6 +62,9 @@ function AnimatedRoutes() {
         <Route path="/forgot-password" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
         <Route path="/onboarding" element={<PageTransition><OnboardingPage /></PageTransition>} />
         <Route path="/creator-onboarding" element={<PageTransition><CreatorOnboardingPage /></PageTransition>} />
+        
+        {/* Helper Route for Seeding */}
+        <Route path="/seed" element={<SeedPage />} />
 
         {/* Protected User Routes */}
         <Route element={<ProtectedRoute allowedRoles={['user']} />}>

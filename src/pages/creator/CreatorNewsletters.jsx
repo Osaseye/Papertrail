@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CreatorSidebar from '../../components/layout/CreatorSidebar';
 import CreatorMobileBottomNav from '../../components/layout/CreatorMobileBottomNav';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import {  
@@ -217,12 +218,19 @@ const CreatorNewsletters = () => {
                                         </>
                                     )}
                                     {newsletter.status === 'sent' && (
-                                        <button className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="View Stats">
+                                        <button 
+                                            onClick={() => addToast("Detailed analytics module coming soon", "info")}
+                                            className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors" title="View Stats"
+                                        >
                                             <BarChart2 size={18} />
                                         </button>
                                     )}
-                                    <button className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                                        <MoreHorizontal size={18} />
+                                    <button 
+                                        onClick={() => navigate(`/read/${newsletter.id}`)}
+                                        className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                        title="Preview"
+                                    >
+                                        <Eye size={18} />
                                     </button>
                                 </div>
                             </div>
