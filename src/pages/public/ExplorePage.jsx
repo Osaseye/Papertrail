@@ -23,6 +23,7 @@ const ExplorePage = () => {
   const [exploreItems, setExploreItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
@@ -40,14 +41,14 @@ const ExplorePage = () => {
       try {
         setLoading(true);
         // Fetch creators from brand collection
-        let q = query(collection(db, 'creator-brands'), limit(25));
+        let q = query(collection(db, 'creator-brands'), limit(100)); // Increase limit for better search pool
         
         if (activeCategory !== "All") {
-             q = query(collection(db, 'creator-brands'), where('niche', '==', activeCategory), limit(25));
+             q = query(collection(db, 'creator-brands'), where('niche', '==', activeCategory), limit(100));
         }
 
         const querySnapshot = await getDocs(q);
-        const creators = querySnapshot.docs.map(doc => {
+        let creators = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -56,6 +57,14 @@ const ExplorePage = () => {
                 niche: data.niche || 'General'
             };
         });
+        
+        if (searchQuery) {
+            const lowerQuery = searchQuery.toLowerCase();
+            creators = creators.filter(c => 
+                c.name.toLowerCase().startsWith(lowerQuery)
+            );
+        }
+
         setExploreItems(creators);
       } catch (error) {
         console.error("Error fetching creators:", error);
@@ -64,8 +73,12 @@ const ExplorePage = () => {
       }
     };
 
-    fetchCreators();
-  }, [activeCategory]);
+    const delayDebounceFn = setTimeout(() => {
+      fetchCreators();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [activeCategory, searchQuery]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-300">
@@ -86,8 +99,10 @@ const ExplorePage = () => {
                     <Search className="text-slate-400 ml-3 size-5" />
                     <input 
                     className="flex-1 border-none bg-transparent focus:ring-0 text-sm px-3 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none" 
-                    placeholder="Search creators by name, niche, or platform..." 
+                    placeholder="Search creators by name..." 
                     type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     <button className="bg-primary text-white font-bold px-6 py-2 text-sm rounded-md hover:bg-primary/90 transition-all">Search</button>
                 </div>

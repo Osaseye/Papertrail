@@ -157,8 +157,8 @@ const SubscriptionManagementPage = () => {
                                                     <ExternalLink size={18} />
                                                 </Link>
                                                 <button 
-                                                    onClick={() => handleUnsubscribe(sub.id, sub.creatorId)}
-                                                    className={`p-2 rounded-lg transition-colors ${sub.status === 'muted' ? 'text-orange-500 bg-orange-50' : 'text-slate-500 hover:text-orange-500 hover:bg-orange-50'}`}
+                                                    onClick={() => handleToggleMute(sub)}
+                                                    className={`p-2 rounded-lg transition-colors ${sub.status === 'muted' ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'text-slate-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20'}`}
                                                     title={sub.status === 'muted' ? "Unmute" : "Mute Notifications"}
                                                 >
                                                     <Ban size={18} />

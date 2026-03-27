@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { db } from '../../lib/firebase';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 const Typewriter = ({ text, delay = 0 }) => {
   const [displayText, setDisplayText] = useState('');
@@ -43,6 +45,32 @@ const NavLink = ({ href, children, isActive }) => (
 
 const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('');
+  const [featuredCreators, setFeaturedCreators] = useState([]);
+  const [isLoadingCreators, setIsLoadingCreators] = useState(true);
+
+  useEffect(() => {
+    const fetchCreators = async () => {
+      try {
+        const creatorsRef = collection(db, 'creator-brands');
+        const q = query(creatorsRef, limit(4));
+        const snapshot = await getDocs(q);
+        const creatorsList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          displayName: doc.data().brandName || doc.data().name || 'Creator',
+          category: doc.data().niche || doc.data().category || 'General',
+          bio: doc.data().description || doc.data().bio || '',
+          profilePicture: doc.data().avatar || doc.data().profilePicture || '',
+          ...doc.data()
+        }));
+        setFeaturedCreators(creatorsList);
+      } catch (error) {
+        console.error("Error fetching creators:", error);
+      } finally {
+        setIsLoadingCreators(false);
+      }
+    };
+    fetchCreators();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -244,22 +272,41 @@ const LandingPage = () => {
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
               >
                 {/* Creator Cards */}
-                {[
-                  { name: "The Daily Pulse", category: "Tech & Design", desc: "Navigating the future of digital experience and AI ethics.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBzVcOZoKYVlytpAgHnDSTfccTmLsO8aKTFe7whdTDApTsbnxwZyRCyJSL_QSzze_Zb66IxZbxc1y47W3UoLkMRdTOgQIZRaenpPNea7nG6hDqsOtY8qSOAyDjDigkzAhlLitmHqiXE4IhG7cJm5MIGxrgm0wOIYOoE5_IGQn3skk5LEos-URtytIsbVRdmmdD-mDg7vKOt_y2eSkUj6XSvw5hnHmCXmllUqzAJ1X7Dgu6PY1beT_Nnmh5S_BTi5DDF92DQsRdkTIty" },
-                  { name: "Market Flow", category: "Finance", desc: "Expert market analysis without the Wall Street jargon.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD_iNXDpTWpMK6t2-hSkaJ44Ze5AoxNJFsHVukWgZgZTcbnrIwMAlu8dXH7aaVXYRtm2921LUVkOiKw8MEZ8fRG3bsrATSycK3r-w5yIueyW3PxUVrrVgxpxZn1zKYDS4sF60dxpv_x4w2L6iqC4P-zMieZxk3CWQPdmZ0yhNXWotDcO4BZS_X57JnXFy8Efm9O04xtGEp-gIM4eJXqZuNWX8XLM1nYborqUR3PbJmE0wr5Vso0aQRfjxT432tlZuoViJUnEpJ36aDX" },
-                  { name: "Mind & Body", category: "Health", desc: "Science-backed wellness tips for the busy professional.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAytzmb7_8eXx1PArnyCk2SLWtyNk-RXdFQF0A5r2_Xp0bVGv-0nwuxOXhw6AM7vM9P--z-ebgqdwqpcf6YDoVJaylAvTobiOsY5szcR47nFx9VejiBoIMvpodwW11sBEBhJxyuZly0SuJP1l1aKS74ULZ9LS6cu4Uw94G_wQCUx7w2jMH2i7GozyP4zGiYwwDN5ZEdv86r6cdEBKZBA-mqqVftIg6G_TxcljoXhoQNykARAdWGyxbI0cIpgL6ZF4jLOH_0P28wbAZN" },
-                  { name: "Modern Mind", category: "Philosophy", desc: "Applying timeless wisdom to 21st-century challenges.", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB9rQHY0tlzmkwNduIxE1Y-X31xT4XctiKfusucB5tEWRDex3RnqlVnVYFcLRzvPqbnb_MfI6BQYdpq2OyXmIjXjVVQBghfteS1W8m999OGXdDweYZS4tOuo6iL52TOnkamgtWzhvbSK_Huv54NBn73QTO7ROJtZClouEg-tSU_frL8qtXtNEjrA1KALQQxzZQv4ok-TxPtiQ2nXPqNv9rNie3sNFpXo0mXZHC0zWrhI7R0IgUkImnWy-DLqBycpYxDoPDImV933Fmg" }
-                ].map((item, index) => (
-                    <motion.div variants={fadeIn} key={index} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all">
-                        <div className="size-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 overflow-hidden">
-                        <img alt="Profile" className="w-full h-full object-cover" src={item.img} />
-                        </div>
-                        <h4 className="font-bold text-lg">{item.name}</h4>
-                        <p className="text-sm text-primary font-bold mb-4">{item.category}</p>
-                        <p className="text-slate-500 text-sm mb-6">{item.desc}</p>
-                        <button className="w-full py-2 rounded-lg border border-primary text-primary font-bold hover:bg-primary hover:text-white transition-colors">Subscribe</button>
-                    </motion.div>
-                ))}
+                {isLoadingCreators ? (
+                  [1, 2, 3, 4].map((i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm animate-pulse">
+                      <div className="size-16 rounded-full bg-slate-200 dark:bg-slate-700 mb-4"></div>
+                      <div className="h-6 w-3/4 bg-slate-200 dark:bg-slate-700 rounded mb-2"></div>
+                      <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
+                      <div className="h-16 w-full bg-slate-200 dark:bg-slate-700 rounded mb-6"></div>
+                      <div className="h-10 w-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+                    </div>
+                  ))
+                ) : (
+                  featuredCreators.length > 0 ? (
+                    featuredCreators.map((item, index) => (
+                      <motion.div variants={fadeIn} key={index} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all">
+                          <div className="size-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 overflow-hidden">
+                          {item.profilePicture ? (
+                            <img alt="Profile" className="w-full h-full object-cover" src={item.profilePicture} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-primary text-white text-xl font-bold">
+                              {item.displayName?.charAt(0) || 'C'}
+                            </div>
+                          )}
+                          </div>
+                          <h4 className="font-bold text-lg">{item.displayName || 'Creator'}</h4>
+                          <p className="text-sm text-primary font-bold mb-4">{item.category || 'Creator'}</p>
+                          <p className="text-slate-500 text-sm mb-6 line-clamp-2">{item.bio || 'A talented creator sharing their passion and insights.'}</p>
+                          <Link to={`/explore?creator=${item.id}`} className="block text-center w-full py-2 rounded-lg border border-primary text-primary font-bold hover:bg-primary hover:text-white transition-colors">Subscribe</Link>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-10 text-slate-500">
+                      No featured creators found. Look out for amazing creators coming soon!
+                    </div>
+                  )
+                )}
               </motion.div>
             </div>
             

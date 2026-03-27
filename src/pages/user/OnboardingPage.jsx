@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { 
   Check, 
   ChevronRight, 
@@ -33,8 +33,6 @@ const INTERESTS = [
   "Technology", "Finance", "Health", "Productivity", "Design", 
   "Politics", "Science", "History", "Culture", "Sports"
 ];
-
-const MOCK_CREATORS = [];
 
 const COUNTRIES = [
   { code: "NG", name: "Nigeria" },
@@ -83,6 +81,35 @@ const OnboardingPage = () => {
   // State for Step 2: Creators
   const [following, setFollowing] = useState([]);
   const [viewingCreator, setViewingCreator] = useState(null);
+  const [creators, setCreators] = useState([]);
+  const [isLoadingCreators, setIsLoadingCreators] = useState(false);
+
+  useEffect(() => {
+    if (step === 2 && creators.length === 0) {
+      const fetchCreators = async () => {
+        setIsLoadingCreators(true);
+        try {
+          const creatorsRef = collection(db, 'creator-brands');
+          const q = query(creatorsRef);
+          const snapshot = await getDocs(q);
+          const creatorsList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            name: doc.data().brandName || doc.data().name || 'Creator',
+            category: doc.data().niche || doc.data().category || 'General',
+            desc: doc.data().description || doc.data().bio || '',
+            image: doc.data().avatar || doc.data().profilePicture || '',
+            ...doc.data()
+          }));
+          setCreators(creatorsList);
+        } catch (error) {
+          console.error("Error fetching creators:", error);
+        } finally {
+          setIsLoadingCreators(false);
+        }
+      };
+      fetchCreators();
+    }
+  }, [step]);
 
   // State for Step 3: Subscription
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' or 'yearly'
@@ -192,6 +219,26 @@ const OnboardingPage = () => {
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 }, { merge: true });
+
+                // Save Subscriptions
+                for (const creatorId of following) {
+                    const creator = creators.find(c => c.id === creatorId);
+                    if (creator) {
+                        const subData = {
+                            brandName: creator.brandName || creator.name || 'Unknown',
+                            creatorId: creatorId,
+                            status: 'active',
+                            subscribedAt: serverTimestamp()
+                        };
+                        await setDoc(doc(db, 'users', user.uid, 'subscriptions', creatorId), subData);
+                        
+                        // Also increment for creator
+                        await setDoc(doc(db, 'creator-brands', creatorId, 'subscribers', user.uid), {
+                            userId: user.uid,
+                            subscribedAt: serverTimestamp()
+                        });
+                    }
+                }
 
                 console.log("User onboarding data saved successfully");
             } catch (error) {
@@ -519,14 +566,18 @@ const OnboardingPage = () => {
                  </div>
 
                   {/* Full Width Grid */}
-                  {MOCK_CREATORS.length === 0 ? (
+                  {isLoadingCreators ? (
+                      <div className="w-full text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                          <p className="text-slate-500 dark:text-slate-400 font-medium">Loading creators...</p>
+                      </div>
+                  ) : creators.length === 0 ? (
                       <div className="w-full text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
                           <p className="text-slate-500 dark:text-slate-400 font-medium">No creators found to follow yet.</p>
                           <p className="text-xs text-slate-400 mt-2">Check back later as our community grows!</p>
                       </div>
                   ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full mb-8">
-                    {MOCK_CREATORS.map((creator) => (
+                    {creators.map((creator) => (
                       <div 
                         key={creator.id} 
                         onClick={() => setViewingCreator(creator)}
@@ -540,7 +591,13 @@ const OnboardingPage = () => {
                       >
                          {/* Card Image Area */}
                          <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2.5 bg-slate-100 dark:bg-slate-700">
-                             <img src={creator.img || creator.image} alt={creator.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                             {creator.img || creator.image ? (
+                               <img src={creator.img || creator.image} alt={creator.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center bg-primary text-white text-3xl font-bold">
+                                 {creator.name.charAt(0)}
+                               </div>
+                             )}
                              <div className="absolute top-1.5 left-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full text-[9px] font-bold text-slate-700 dark:text-slate-200 shadow-sm">
                                 {creator.category}
                              </div>
