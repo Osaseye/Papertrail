@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../lib/firebase';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
@@ -43,10 +43,14 @@ const NavLink = ({ href, children, isActive }) => (
   </a>
 );
 
+import { useAuth } from '../../context/AuthContext';
+
 const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('');
   const [featuredCreators, setFeaturedCreators] = useState([]);
   const [isLoadingCreators, setIsLoadingCreators] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -285,8 +289,16 @@ const LandingPage = () => {
                 ) : (
                   featuredCreators.length > 0 ? (
                     featuredCreators.map((item, index) => (
-                      <motion.div variants={fadeIn} key={index} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all">
-                          <div className="size-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 overflow-hidden">
+                      <motion.div
+                        variants={fadeIn}
+                        key={index}
+                        className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all cursor-pointer"
+                        onClick={() => navigate(`/explore?creator=${item.id}`)}
+                        tabIndex={0}
+                        role="button"
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate(`/explore?creator=${item.id}`); }}
+                      >
+                        <div className="size-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 overflow-hidden">
                           {item.profilePicture ? (
                             <img alt="Profile" className="w-full h-full object-cover" src={item.profilePicture} />
                           ) : (
@@ -294,11 +306,23 @@ const LandingPage = () => {
                               {item.displayName?.charAt(0) || 'C'}
                             </div>
                           )}
-                          </div>
-                          <h4 className="font-bold text-lg">{item.displayName || 'Creator'}</h4>
-                          <p className="text-sm text-primary font-bold mb-4">{item.category || 'Creator'}</p>
-                          <p className="text-slate-500 text-sm mb-6 line-clamp-2">{item.bio || 'A talented creator sharing their passion and insights.'}</p>
-                          <Link to={`/explore?creator=${item.id}`} className="block text-center w-full py-2 rounded-lg border border-primary text-primary font-bold hover:bg-primary hover:text-white transition-colors">Subscribe</Link>
+                        </div>
+                        <h4 className="font-bold text-lg">{item.displayName || 'Creator'}</h4>
+                        <p className="text-sm text-primary font-bold mb-4">{item.category || 'Creator'}</p>
+                        <p className="text-slate-500 text-sm mb-6 line-clamp-2">{item.bio || 'A talented creator sharing their passion and insights.'}</p>
+                        <button
+                          className="block text-center w-full py-2 rounded-lg border border-primary text-primary font-bold hover:bg-primary hover:text-white transition-colors"
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (!user) {
+                              navigate('/login');
+                            } else {
+                              navigate(`/explore?creator=${item.id}`);
+                            }
+                          }}
+                        >
+                          Subscribe
+                        </button>
                       </motion.div>
                     ))
                   ) : (
